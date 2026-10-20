@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0d1418" />
+  <title>GRS LC01 Web Console</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">GRS LC01 · Production UI / Web Serial</p>
+      <h1>GRS 界面模拟器与 Web 上位机</h1>
+      <p class="subtitle">基于仓库 Production UI 128×64 布局和 USB CDC 协议；未连接设备时可直接使用模拟器。</p>
+    </div>
+    <div class="topbar-actions">
+      <span id="secureBadge" class="badge">检查浏览器能力…</span>
+      <span id="sourceBadge" class="badge subtle">UI 128×64 · ST7567</span>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="card simulator-card">
+      <div class="card-head">
+        <div>
+          <p class="section-kicker">DEVICE UI</p>
+          <h2>本机界面</h2>
+        </div>
+        <div class="inline-controls">
+          <label for="simScenario">模拟场景</label>
+          <select id="simScenario">
+            <option value="background">本底</option>
+            <option value="rise">剂量上升</option>
+            <option value="alarm">剂量率报警</option>
+            <option value="gmfault">GM 故障</option>
+            <option value="lowbattery">低电量</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="lcd-shell" aria-label="128乘64单色LCD模拟显示">
+        <div class="lcd-label-row"><span>GRS LC01</span><span id="lcdModeLabel">SIM</span></div>
+        <canvas id="lcd" width="128" height="64"></canvas>
+      </div>
+
+      <div class="button-row" aria-label="设备虚拟按键">
+        <button class="device-key" data-key="left"><span>◀</span><small>LEFT</small></button>
+        <button class="device-key power" data-key="power"><span>●</span><small>POWER</small></button>
+        <button class="device-key" data-key="right"><span>▶</span><small>RIGHT</small></button>
+        <button class="device-key" data-key="mute"><span>×</span><small>MUTE</small></button>
+      </div>
+      <p class="hint">短按/长按逻辑对应固件：右键进入趋势；电源键切换 Dose/Total；左键长按进入设置；设置页长按电源返回。</p>
+      <div id="uiStateText" class="state-line">页面：主界面 · Dose</div>
+    </section>
+
+    <section class="card host-card">
+      <div class="connection-row">
+        <div>
+          <p class="section-kicker">WEB UPPER COMPUTER</p>
+          <h2>设备连接</h2>
+        </div>
+        <div class="connection-actions">
+          <span id="connectionState" class="status-dot offline">未连接 · 模拟模式</span>
+          <button id="connectBtn" class="primary">连接 GRS</button>
+          <button id="disconnectBtn" disabled>断开</button>
+        </div>
+      </div>
+      <p id="serialHelp" class="hint compact">Web Serial 需要桌面版 Chromium 浏览器（Chrome/Edge）和 HTTPS/localhost。</p>
+
+      <nav class="tabs" aria-label="上位机功能">
+        <button class="tab active" data-tab="overview">设备状态</button>
+        <button class="tab" data-tab="telemetry">实时数据</button>
+        <button class="tab" data-tab="hv">高压状态</button>
+        <button class="tab" data-tab="update">固件 / 资源</button>
+        <button class="tab" data-tab="logs">通信日志</button>
+      </nav>
+
+      <div class="tab-panel active" id="tab-overview">
+        <div class="metric-grid compact-metrics">
+          <article><span>Display Dose</span><strong id="doseMetric">0.12 µSv/h</strong></article>
+          <article><span>Measure Dose</span><strong id="measureDoseMetric">0.12 µSv/h</strong></article>
+          <article><span>CPS / CPM</span><strong id="countMetric">0 / 8</strong></article>
+          <article><span>Battery</span><strong id="batteryMetric">3.86 V</strong></article>
+        </div>
+        <div class="info-grid">
+          <dl class="kv-list">
+            <div><dt>产品 ID</dt><dd id="productValue">GRS LC01 (SIM)</dd></div>
+            <div><dt>硬件版本</dt><dd id="hwValue">—</dd></div>
+            <div><dt>当前固件</dt><dd id="fwValue">模拟</dd></div>
+            <div><dt>Boot 状态</dt><dd id="bootValue">NORMAL</dd></div>
+            <div><dt>界面资源</dt><dd id="resourceValue">模拟</dd></div>
+            <div><dt>外部供电</dt><dd id="powerValue">否</dd></div>
+          </dl>
+          <dl class="kv-list">
+            <div><dt>复位原因</dt><dd id="resetValue">—</dd></div>
+            <div><dt>设备时间</dt><dd id="rtcValue">—</dd></div>
+            <div><dt>设备健康</dt><dd id="healthValue">模拟正常</dd></div>
+            <div><dt>算法状态</dt><dd id="algoValue">0</dd></div>
+            <div><dt>探测状态</dt><dd id="detectValue">0</dd></div>
+            <div><dt>总脉冲</dt><dd id="pulsesValue">0</dd></div>
+          </dl>
+        </div>
+        <div class="action-row">
+          <button id="refreshInfoBtn">刷新设备状态</button>
+          <button id="readRtcBtn">读取 RTC</button>
+          <button id="syncRtcBtn" class="primary-soft">同步电脑时间</button>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-telemetry">
+        <div class="panel-headline">
+          <div><h3>GM 实时数据</h3><p>Display / Measure 剂量率、原始 CPS 与 60 秒历史。</p></div>
+          <button id="exportCsvBtn">导出 CSV</button>
+        </div>
+        <canvas id="telemetryChart" width="920" height="250"></canvas>
+        <div class="telemetry-table-wrap">
+          <table>
+            <thead><tr><th>字段</th><th>当前值</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td>Display CPM</td><td id="displayCpmValue">8</td><td>设备显示路径 CPM</td></tr>
+              <tr><td>Normalized CPS</td><td id="normalizedCpsValue">0.00</td><td>raw_delta_count / sample_elapsed_ms</td></tr>
+              <tr><td>Sample elapsed</td><td id="sampleElapsedValue">1000 ms</td><td>当前 GM 样本窗口</td></tr>
+              <tr><td>Flags</td><td id="gmFlagsValue">0x00</td><td>Alarm / timing fault / GM fault</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-hv">
+        <div class="notice">Production Web 控制台只读取高压状态。协议 0x51–0x54 保留，不提供手动 PWM / 调参入口。</div>
+        <div class="metric-grid hv-metrics">
+          <article><span>HV Enable</span><strong id="hvEnable">—</strong></article>
+          <article><span>Target</span><strong id="hvTarget">—</strong></article>
+          <article><span>Measured</span><strong id="hvMeasured">—</strong></article>
+          <article><span>Duty</span><strong id="hvDuty">—</strong></article>
+          <article><span>Frequency</span><strong id="hvFreq">—</strong></article>
+          <article><span>ADC Raw</span><strong id="hvAdc">—</strong></article>
+        </div>
+        <div class="action-row"><button id="refreshHvBtn">读取高压状态</button></div>
+      </div>
+
+      <div class="tab-panel" id="tab-update">
+        <div class="notice warning">浏览器版支持通过现有 USB CDC 协议传输 `.grsfw` / `.grsres`。WCH-Link 整片烧录和本地构建仍保留在桌面上位机。</div>
+        <div class="update-grid">
+          <article class="update-box">
+            <h3>Application 固件</h3>
+            <input id="firmwareFile" type="file" accept=".grsfw" />
+            <pre id="firmwareMeta">尚未选择 .grsfw</pre>
+            <button id="firmwareUpdateBtn" class="primary" disabled>开始固件更新</button>
+          </article>
+          <article class="update-box">
+            <h3>界面资源</h3>
+            <input id="resourceFile" type="file" accept=".grsres" />
+            <pre id="resourceMeta">尚未选择 .grsres</pre>
+            <button id="resourceUpdateBtn" class="primary" disabled>开始资源更新</button>
+          </article>
+        </div>
+        <div class="progress-line"><div id="updateProgressBar"></div></div>
+        <p id="updateProgressText" class="hint compact">等待更新任务</p>
+      </div>
+
+      <div class="tab-panel" id="tab-logs">
+        <div class="panel-headline"><h3>通信日志</h3><button id="clearLogBtn">清空</button></div>
+        <pre id="logOutput" class="log-output"></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>GRS LC01 Web Console</span>
+    <span>模拟器不替代实机检定；设备写操作仍由固件进行包校验、电源条件和状态机保护。</span>
+  </footer>
+
+  <script src="grs-protocol.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
