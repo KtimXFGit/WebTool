@@ -15,17 +15,33 @@ let primaryLabel=null;
 // u8g2_font_logisoso32_tn。这里只提取剂量率需要的 0-9、'.'、'-'，
 // 保持 Web 预览与后续实机资源方案可以逐像素对应。
 window.GRSUIFaces=window.GRSUIFaces||{};
-window.GRSUIFaces[PREVIEW_FACE_LOGISOSO32]=window.GRSUIFaces[PREVIEW_FACE_LOGISOSO32]||{"meta":{"name":"PREVIEW_LOGISOSO32_TN","width":20,"height":32,"baseline":32},"glyphs":{"48":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/gffD5//j/8H/gH4A=="],"49":[8,32,20,7,-32,"Dw8fHz/////vDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8="],"50":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wH2A+AD4AfAB4APgB8AHgA+AHwAfAD4AfAB8APgA8AHwA+AD//////////w=="],"51":[16,32,20,2,-32,"//////////8AHwA+ADwAfAD4APAB8APgA+AD8AP4A/wAPgAeAA8ADwAPAA8ADwAPAA8QH3Ae/H5//D/4H/AHwA=="],"52":[16,32,20,2,-32,"B8AHgAeAB4APgA8ADwAPAB8AHgAeAB4APgA8ADwAPAB88HjwePB48Pjw8PD//////////wDwAPAA8ADwAPAA8A=="],"53":[16,32,20,2,-32,"///////////wAPAA8ADwAPAA8ADwAPfg//j//P/+/D74H/AP8A8ADwAPAA8ADwAP8A/wD/gffD5//j/8H/gH4A=="],"54":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AA8ADwAPAA9+D/+P/8//78Pvgf8A/wD/AP8A/wD/AP8A/wD/gffD5//j/8H/gH4A=="],"55":[16,32,20,2,-32,"///////////wH/Af8B7wPgA+AD4APAB8AHwAeAB4APgA+ADwAPAB8AHwAeAD4APgA+ADwAfAB8AHwAeAD4APgA=="],"56":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wD/AP+B98Pn/+P/w//H/+fD74H/AP8A/wD/AP8A/wD/gffD5//j/8H/gH4A=="],"57":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wD/AP8A/wD/gffD9//z//H/8H7wAPAA8ADwAP8A/wD/gffD5//j/8H/gH4A=="],"46":[4,4,12,4,-4,"YPDwYA=="],"45":[12,4,20,4,-14,"//D/8P/w//A="]}};
+window.GRSUIFaces[PREVIEW_FACE_LOGISOSO32]=window.GRSUIFaces[PREVIEW_FACE_LOGISOSO32]||{"meta":{"name":"PREVIEW_LOGISOSO32_TN","width":20,"height":32,"baseline":32},"glyphs":{"48":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/gffD5//j/8H/gH4A=="],"49":[8,32,20,7,-32,"Dw8fHz/////vDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8="],"50":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wH2A+AD4AfAB4APgB8AHgA+AHwAfAD4AfAB8APgA8AHwA+AD//////////w=="],"51":[16,32,20,2,-32,"//////////8AHwA+ADwAfAD4APAB8APgA+AD8AP4A/wAPgAeAA8ADwAPAA8ADwAPAA8QH3Ae/H5//D/4H/AHwA=="],"52":[16,32,20,2,-32,"B8AHgAeAB4APgA8ADwAPAB8AHgAeAB4APgA8ADwAPAB88HjwePB48Pjw8PD//////////wDwAPAA8ADwAPAA8A=="],"53":[16,32,20,2,-32,"///////////wAPAA8ADwAPAA8ADwAPfg//j//P/+/D74H/AP8A8ADwAPAA8ADwAP8A/wD/gffD5//j/8H/gH4A=="],"54":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AA8ADwAPAA9+D/+P/8//78Pvgf8A/wD/AP8A/wD/AP8A/wD/gffD5//j/8H/gH4A=="],"55":[16,32,20,2,-32,"///////////wH/Af8B7wPgA+AD4APAB8AHwAeAB4APgA+ADwAPAB8AHwAeAD4APgA+ADwAfAB8AHwAeAD4APgA=="],"56":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wD/AP+B98Pn/+P/w//H/+fD74H/AP8A/wD/AP8A/wD/gffD5//j/8H/gH4A=="],"57":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wD/AP8A/wD/gffD9//z//H/8H7wAPAA8ADwAP8A/wD/gffD5//j/8H/gH4A=="],"46":[4,4,12,4,-4,"YPDwYA=="],"45":[12,4,20,4,-14,"//D/8P/w//A="]}};
 
-function two(v){return String(Math.floor(v)).padStart(2,'0');}
 function langOf(s){return s.lang==='en'?'en':'zh';}
-function timeHM(d){return `${two(d.getHours())}:${two(d.getMinutes())}`;}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function trunc(v){return v<0?Math.ceil(v):Math.floor(v);}
 
+function drawLowercaseC(l,x,y){
+  l.hline(x+1,y,3);
+  l.vline(x,y+1,3);
+  l.hline(x+1,y+4,3);
+}
+
+function drawCompactTemperature(l,m){
+  const valid=m.env&&Number.isFinite(Number(m.temp));
+  const text=valid?String(clamp(Math.round(Number(m.temp)),-99,199)):'--';
+  l.text(1,9,FACE.HAX,text);
+  const degreeX=1+l.width(FACE.HAX,text)+1;
+  // 3×3 像素温度度数符号，避免额外引入字体字形。
+  l.pixel(degreeX+1,1);
+  l.pixel(degreeX,2);
+  l.pixel(degreeX+2,2);
+  l.pixel(degreeX+1,3);
+  drawLowercaseC(l,degreeX+4,4);
+}
+
 function compactHeader(l,m,s){
-  const d=m.time instanceof Date?m.time:new Date();
-  l.text(1,9,FACE.PROFONT12,timeHM(d));
+  drawCompactTemperature(l,m);
   if(s.alarmSound){
     l.glyph(76,1,FACE.ICON,ICON.SOUND);
     if(m.muted){
@@ -40,6 +56,23 @@ function compactHeader(l,m,s){
   l.pixel(125,4);l.pixel(125,5);
   const level=clamp(m.battLevel??0,0,3);
   for(let bar=0;bar<level;bar++)l.box(115+bar*3,4,2,2);
+}
+
+function activeRangeCenti(doseCenti){
+  const value=Math.max(0,Number(doseCenti)||0);
+  const ranges=[100,1000,10000,100000,1000000,10000000];
+  for(const range of ranges)if(value<=range)return range;
+  return ranges[ranges.length-1];
+}
+
+function drawRangeBar(l,doseCenti){
+  const x=31,y=14,w=95,h=6;
+  const range=activeRangeCenti(doseCenti);
+  const ratio=clamp((Math.max(0,Number(doseCenti)||0))/range,0,1);
+  const innerW=w-4;
+  l.frame(x,y,w,h);
+  const fill=Math.round(innerW*ratio);
+  if(fill>0)l.box(x+2,y+2,fill,2);
 }
 
 function drawHold(l,s){
@@ -57,12 +90,15 @@ function renderCompact(state,canvas){
   const lang=langOf(s);
   compactHeader(l,m,s);
 
-  // 精简版主界面：Dose 左上，大号剂量率居中，单位独立放在右下角。
-  l.textId(1,20,FACE.SIX10,IDS.MAIN_DOSE,lang);
+  // 精简版：顶部显示整数温度；Dose 与自动量程条同一行；
+  // 大号剂量率居中；单位固定在右下角。
+  l.textId(1,19,FACE.SIX10,IDS.MAIN_DOSE,lang);
+  drawRangeBar(l,m.dose);
+
   const rate=UI.formatDoseRate(m.dose);
   const valueWidth=l.width(PREVIEW_FACE_LOGISOSO32,rate.value);
   const valueX=Math.max(0,trunc((128-valueWidth)/2));
-  l.text(valueX,53,PREVIEW_FACE_LOGISOSO32,rate.value);
+  l.text(valueX,52,PREVIEW_FACE_LOGISOSO32,rate.value);
   const unitWidth=l.width(FACE.T0_11,rate.unit);
   l.text(Math.max(0,127-unitWidth),63,FACE.T0_11,rate.unit);
 
@@ -131,7 +167,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前仅调整 Dose 主界面：Total、趋势页、设置页仍保持 Production 原版，便于逐项确认后再同步到实机固件。';
+  note.textContent='当前精简 Dose 主界面采用整数温度、Dose+自动量程进度条、大号 U8g2 剂量率和右下角单位；Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
