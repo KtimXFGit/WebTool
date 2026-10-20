@@ -1,0 +1,19 @@
+/* 128x64 LCD: keep desktop presentation at an exact 4x integer scale.
+ * The original global border-box rule made a nominal 512px canvas content area
+ * smaller than 512px once its border was included, forcing another resample. */
+#lcd {
+  box-sizing: content-box;
+  width: 512px;
+  max-width: calc(100% - 14px);
+  height: auto;
+  margin: 0 auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: none;
+}
+
+@media (max-width: 570px) {
+  #lcd {
+    width: calc(100% - 14px);
+  }
+}
