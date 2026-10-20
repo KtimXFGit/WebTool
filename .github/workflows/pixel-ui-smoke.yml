@@ -5,8 +5,10 @@ on:
     branches: [main]
     paths:
       - 'grs-production-ui.js'
+      - 'ui-preview.js'
       - 'ui-resource/**'
       - 'tests/pixel-ui-smoke.js'
+      - 'tests/ui-preview-smoke.js'
       - '.github/workflows/pixel-ui-smoke.yml'
   workflow_dispatch:
 
@@ -24,6 +26,9 @@ jobs:
       - name: Syntax checks
         run: |
           node --check grs-production-ui.js
+          node --check ui-preview.js
           node --check app.js
       - name: Render Production frames without browser fonts
         run: node tests/pixel-ui-smoke.js
+      - name: Verify compact Dose preview removals
+        run: node tests/ui-preview-smoke.js
