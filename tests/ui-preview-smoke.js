@@ -34,8 +34,8 @@ const a=compact(normal);
 assert(a.buf.length===1024,'compact framebuffer must be 1024 bytes');
 assert(/^[0-9a-f]{8}$/.test(a.crc),'compact CRC missing');
 
-// 1) 原 Production 分割线仍应全部移除。
-for(const [x,y] of [[0,10],[51,10],[73,9],[91,20],[92,30],[28,46],[58,46],[91,46]])
+// 1) 原 Production 分割线仍应全部移除。选择不会与新数字/量程条重叠的采样点。
+for(const [x,y] of [[0,10],[51,10],[73,9],[91,11],[127,20],[127,30],[28,46],[58,46],[127,46]])
   assert(bit(a.buf,x,y)===0,`divider pixel still present at ${x},${y}`);
 
 // 2) Home 图标所在中间标题栏区域保持空白。
