@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#0d1418" />
   <title>GRS LC01 Web Console</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="lcd-sharp.css" />
 </head>
 <body>
   <header class="topbar">
@@ -41,7 +42,7 @@
 
       <div class="lcd-shell" aria-label="128乘64单色LCD模拟显示">
         <div class="lcd-label-row"><span>GRS LC01</span><span id="lcdModeLabel">SIM</span></div>
-        <canvas id="lcd" width="128" height="64"></canvas>
+        <canvas id="lcd" width="128" height="64" aria-label="128×64 1-bit LCD，桌面端4倍整数像素缩放"></canvas>
       </div>
 
       <div class="button-row" aria-label="设备虚拟按键">
@@ -173,6 +174,7 @@
   </footer>
 
   <script src="grs-protocol.js"></script>
+  <script src="lcd-sharp.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
