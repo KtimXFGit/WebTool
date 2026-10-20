@@ -5,10 +5,17 @@ const UI=window.GRSProductionUI;
 if(!UI)return;
 const originalRender=UI.render;
 const {FACE,ICON,IDS}=UI;
+const PREVIEW_FACE_LOGISOSO32=8;
 let previewSelect=null;
 let referenceCanvas=null;
 let compareWrap=null;
 let primaryLabel=null;
+
+// 精简版大数字使用与 GRS 主资源相同固定版本 U8g2 中的
+// u8g2_font_logisoso32_tn。这里只提取剂量率需要的 0-9、'.'、'-'，
+// 保持 Web 预览与后续实机资源方案可以逐像素对应。
+window.GRSUIFaces=window.GRSUIFaces||{};
+window.GRSUIFaces[PREVIEW_FACE_LOGISOSO32]=window.GRSUIFaces[PREVIEW_FACE_LOGISOSO32]||{"meta":{"name":"PREVIEW_LOGISOSO32_TN","width":20,"height":32,"baseline":32},"glyphs":{"48":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/gffD5//j/8H/gH4A=="],"49":[8,32,20,7,-32,"Dw8fHz/////vDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8="],"50":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wH2A+AD4AfAB4APgB8AHgA+AHwAfAD4AfAB8APgA8AHwA+AD//////////w=="],"51":[16,32,20,2,-32,"//////////8AHwA+ADwAfAD4APAB8APgA+AD8AP4A/wAPgAeAA8ADwAPAA8ADwAPAA8QH3Ae/H5//D/4H/AHwA=="],"52":[16,32,20,2,-32,"B8AHgAeAB4APgA8ADwAPAB8AHgAeAB4APgA8ADwAPAB88HjwePB48Pjw8PD//////////wDwAPAA8ADwAPAA8A=="],"53":[16,32,20,2,-32,"///////////wAPAA8ADwAPAA8ADwAPfg//j//P/+/D74H/AP8A8ADwAPAA8ADwAP8A/wD/gffD5//j/8H/gH4A=="],"54":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AA8ADwAPAA9+D/+P/8//78Pvgf8A/wD/AP8A/wD/AP8A/wD/gffD5//j/8H/gH4A=="],"55":[16,32,20,2,-32,"///////////wH/Af8B7wPgA+AD4APAB8AHwAeAB4APgA+ADwAPAB8AHwAeAD4APgA+ADwAfAB8AHwAeAD4APgA=="],"56":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wD/AP+B98Pn/+P/w//H/+fD74H/AP8A/wD/AP8A/wD/gffD5//j/8H/gH4A=="],"57":[16,32,20,2,-32,"B+Af+D/8f/58Pvgf8A/wD/AP8A/wD/AP8A/wD/gffD9//z//H/8H7wAPAA8ADwAP8A/wD/gffD5//j/8H/gH4A=="],"46":[4,4,12,4,-4,"YPDwYA=="],"45":[12,4,20,4,-14,"//D/8P/w//A="]}};
 
 function two(v){return String(Math.floor(v)).padStart(2,'0');}
 function langOf(s){return s.lang==='en'?'en':'zh';}
@@ -50,16 +57,14 @@ function renderCompact(state,canvas){
   const lang=langOf(s);
   compactHeader(l,m,s);
 
-  // 精简版主界面：无任何区域分割线、无 Home/STATUS/表情/USB/环境与计数区。
-  l.centerId(0,128,20,FACE.SIX10,IDS.MAIN_DOSE,lang);
+  // 精简版主界面：Dose 左上，大号剂量率居中，单位独立放在右下角。
+  l.textId(1,20,FACE.SIX10,IDS.MAIN_DOSE,lang);
   const rate=UI.formatDoseRate(m.dose);
-  const valueWidth=l.width(FACE.TIMR24,rate.value);
+  const valueWidth=l.width(PREVIEW_FACE_LOGISOSO32,rate.value);
+  const valueX=Math.max(0,trunc((128-valueWidth)/2));
+  l.text(valueX,53,PREVIEW_FACE_LOGISOSO32,rate.value);
   const unitWidth=l.width(FACE.T0_11,rate.unit);
-  const gap=3;
-  const totalWidth=valueWidth+gap+unitWidth;
-  const x=Math.max(0,trunc((128-totalWidth)/2));
-  l.text(x,46,FACE.TIMR24,rate.value);
-  l.text(x+valueWidth+gap,46,FACE.T0_11,rate.unit);
+  l.text(Math.max(0,127-unitWidth),63,FACE.T0_11,rate.unit);
 
   if(Date.now()<(u.hint||0))drawHold(l,s);
   l.present();
