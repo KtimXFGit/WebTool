@@ -34,7 +34,7 @@ const a=compact(normal);
 assert(a.buf.length===1024,'compact framebuffer must be 1024 bytes');
 assert(/^[0-9a-f]{8}$/.test(a.crc),'compact CRC missing');
 
-// 1) 主界面原分割线位置应为空。
+// 1) 原 Production 分割线仍应全部移除。
 for(const [x,y] of [[0,10],[51,10],[73,9],[91,20],[92,30],[28,46],[58,46],[91,46]])
   assert(bit(a.buf,x,y)===0,`divider pixel still present at ${x},${y}`);
 
@@ -42,20 +42,32 @@ for(const [x,y] of [[0,10],[51,10],[73,9],[91,20],[92,30],[28,46],[58,46],[91,46
 for(let y=0;y<10;y++)for(let x=40;x<74;x++)
   assert(bit(a.buf,x,y)===0,`home/header icon residue at ${x},${y}`);
 
-// 3) 秒数变化不能改变精简界面；只显示 HH:MM。
-const secChanged=clone();secChanged.m.time.setSeconds(59);
-assert(compact(secChanged).crc===a.crc,'seconds unexpectedly affect compact UI');
+// 3) 顶部已改为温度，时间的时/分/秒变化都不应影响精简界面。
+const timeChanged=clone();timeChanged.m.time=new Date(2030,1,2,3,4,59);
+assert(compact(timeChanged).crc===a.crc,'time unexpectedly affects compact UI');
 
-// 4) STATUS/USB/表情、CPS/CPM/温湿度被移除，因此这些状态变化不应改变 framebuffer。
+// 4) 温度采用整数显示，24.6 -> 25；相同四舍五入结果不应改变画面，不同整数应改变。
+const sameRoundedTemp=clone();sameRoundedTemp.m.temp=25.4;
+assert(compact(sameRoundedTemp).crc===a.crc,'same rounded temperature changed compact UI');
+const changedTemp=clone();changedTemp.m.temp=26.1;
+assert(compact(changedTemp).crc!==a.crc,'integer temperature does not affect compact UI');
+
+// 5) CPS/CPM/RH、STATUS/USB/表情仍不出现在精简界面。
 const alarm=clone();alarm.m.alarm=true;
 const usb=clone();usb.c.connected=true;
-const env=clone();Object.assign(env.m,{cps:99,cpm:5940,temp:-12.3,rh:99,env:true});
+const other=clone();Object.assign(other.m,{cps:99,cpm:5940,rh:99});
 assert(compact(alarm).crc===a.crc,'alarm status/face still affects compact UI');
 assert(compact(usb).crc===a.crc,'USB status still affects compact UI');
-assert(compact(env).crc===a.crc,'CPS/CPM/environment still affects compact UI');
+assert(compact(other).crc===a.crc,'CPS/CPM/RH still affect compact UI');
 
-// 5) Dose 本身变化必须改变 framebuffer。
+// 6) Dose 本身必须改变大号数字和自动量程进度条。
 const dose=clone();dose.m.dose=1234;
 assert(compact(dose).crc!==a.crc,'dose value does not affect compact UI');
 
-console.log(JSON.stringify({compact:a.crc,changedDose:compact(dose).crc},null,2));
+// 7) 量程条位于 Dose 右侧：边框存在，低剂量时仅左侧少量填充。
+assert(bit(a.buf,31,14)===1,'range bar top-left frame missing');
+assert(bit(a.buf,125,14)===1,'range bar top-right frame missing');
+assert(bit(a.buf,34,16)===1,'range bar fill missing');
+assert(bit(a.buf,50,16)===0,'range bar fill unexpectedly too long');
+
+console.log(JSON.stringify({compact:a.crc,changedTemp:compact(changedTemp).crc,changedDose:compact(dose).crc},null,2));
