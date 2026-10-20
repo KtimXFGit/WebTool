@@ -13,7 +13,15 @@ for(const file of [
 
 function assert(v,msg){if(!v)throw new Error(msg);}
 assert(GRSUIMeta.glyph_count===280,'unexpected glyph count');
-for(let i=0;i<8;i++)assert(GRSUIFaces[i]&&GRSUIFaces[i].glyphs,`missing face ${i}`);
+let actualGlyphs=0;
+for(let i=0;i<8;i++){
+  assert(GRSUIFaces[i]&&GRSUIFaces[i].glyphs,`missing face ${i}`);
+  for(const [cp,r] of Object.entries(GRSUIFaces[i].glyphs)){
+    actualGlyphs++;
+    try{atob(r[5]);}catch(e){throw new Error(`invalid base64 face=${i} cp=${cp} data=${JSON.stringify(r[5])}: ${e.message}`);}
+  }
+}
+assert(actualGlyphs===GRSUIMeta.glyph_count,`glyph count mismatch actual=${actualGlyphs}`);
 
 const ctx={
   createImageData(w,h){return {data:new Uint8ClampedArray(w*h*4),width:w,height:h};},
