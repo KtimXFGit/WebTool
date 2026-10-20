@@ -1,4 +1,5 @@
 'use strict';
+// Production glyph data must remain valid strict browser Base64 and render without any browser font APIs.
 const fs=require('fs');
 const vm=require('vm');
 const path=require('path');
