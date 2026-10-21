@@ -58,7 +58,11 @@ function microWidth(text){return Math.max(0,String(text).length*4-1);}
 function microText(l,x,y,text){let px=x;for(const ch of String(text)){const rows=MICRO[ch]||MICRO[' '];for(let yy=0;yy<5;yy++)for(let xx=0;xx<3;xx++)if(rows[yy][xx]==='1')l.pixel(px+xx,y+yy);px+=4;}return px-x;}
 function microRight(l,right,y,text){const w=microWidth(text);microText(l,right-w,y,text);}
 function labelText(l,x,y,text){let px=x;for(const ch of String(text)){const rows=LABEL5X7[ch];if(rows)for(let yy=0;yy<7;yy++)for(let xx=0;xx<5;xx++)if(rows[yy][xx]==='1')l.pixel(px+xx,y+yy);px+=5;}return px-x;}
-function chevron(l,x,y){l.line(x,y,x+3,y+3);l.line(x+3,y+3,x,y+6);}
+function solidTriangle(l,x,y){
+  const widths=[1,2,3,4,3,2,1];
+  for(let row=0;row<7;row++)l.hline(x,y+row,widths[row]);
+}
+function rightChevron(l,x,y){l.line(x,y,x+3,y+3);l.line(x+3,y+3,x,y+6);}
 
 function drawMiniBitmap(l,x,y,rows){for(let yy=0;yy<rows.length;yy++)for(let xx=0;xx<rows[yy].length;xx++)if(rows[yy][xx]==='1')l.pixel(x+xx,y+yy);}
 function drawStatusIcons(l,m,s){
@@ -179,9 +183,9 @@ function drawScrollThumb(l,sel,count){const y1=12,y2=60;l.vline(3,y1,y2-y1+1);co
 function renderSettingsSub(l,state){const {m,s,u,c}=state,lang=s.lang==='en'?'en':'zh';drawTimeHeader(l,m,s);const face=lang==='en'?FACE.LATIN:FACE.BODY;
   if(u.sub==='device'){l.text(9,17,face,l.string(IDS.FIRMWARE,lang));l.text(9,34,face,l.string(IDS.RESOURCE,lang));l.text(74,19,FACE.LATIN,c.info?`0x${Number(c.info.applicationVersion).toString(16).toUpperCase()}`:'SIM');l.text(74,36,FACE.LATIN,c.res?`0x${Number(c.res.activeVersion).toString(16).toUpperCase()}`:'SIM');return;}
   if(u.sub==='datetime'){l.centerText(0,128,14,face,l.string(IDS.DATE_TIME,lang));const d=m.time instanceof Date?m.time:new Date();l.centerText(0,128,31,FACE.LATIN,`${d.getFullYear()}-${two(d.getMonth()+1)}-${two(d.getDate())}`);l.centerText(0,128,47,FACE.LATIN,`${two(d.getHours())}:${two(d.getMinutes())}`);return;}
-  const isData=u.sub==='data',ids=isData?[IDS.ALARM_LOG,IDS.CLEAR_LOG,IDS.BACK]:[IDS.CLEAR,IDS.LIMIT,IDS.BACK],sel=u.subSel||0;for(let i=0;i<3;i++){const y=16+i*15;if(i===sel)chevron(l,7,y+2);l.textId(15,y,face,ids[i],lang);}return;
+  const isData=u.sub==='data',ids=isData?[IDS.ALARM_LOG,IDS.CLEAR_LOG,IDS.BACK]:[IDS.CLEAR,IDS.LIMIT,IDS.BACK],sel=u.subSel||0;for(let i=0;i<3;i++){const y=16+i*15;if(i===sel)solidTriangle(l,7,y+2);l.textId(15,y,face,ids[i],lang);}return;
 }
-function renderSettings(l,state){const {m,s,u}=state;drawTimeHeader(l,m,s);if(u.sub){renderSettingsSub(l,state);return;}const lang=s.lang==='en'?'en':'zh',face=lang==='en'?FACE.LATIN:FACE.BODY,count=SETTINGS_LABELS.length;drawScrollThumb(l,u.sel||0,count);let first=Math.max(0,Math.min(count-4,u.first||0));for(let r=0;r<4;r++){const i=first+r;if(i>=count)break;const y=12+r*13;if(i===u.sel)chevron(l,8,y+2);l.textId(15,y,face,SETTINGS_LABELS[i],lang);const val=settingValue(l,state,i,lang),vf=lang==='en'?FACE.LATIN:(i===0||boolKey(i)?FACE.BODY:FACE.LATIN),w=l.width(vf,val);l.text(Math.max(80,125-w),y+(vf===FACE.BODY?0:2),vf,val);}}
+function renderSettings(l,state){const {m,s,u}=state;drawTimeHeader(l,m,s);if(u.sub){renderSettingsSub(l,state);return;}const lang=s.lang==='en'?'en':'zh',face=lang==='en'?FACE.LATIN:FACE.BODY,count=SETTINGS_LABELS.length;drawScrollThumb(l,u.sel||0,count);let first=Math.max(0,Math.min(count-4,u.first||0));for(let r=0;r<4;r++){const i=first+r;if(i>=count)break;const y=12+r*13;if(i===u.sel)solidTriangle(l,8,y+2);l.textId(15,y,face,SETTINGS_LABELS[i],lang);const val=settingValue(l,state,i,lang);if(val==='>'){rightChevron(l,121,y+2);}else{const vf=lang==='en'?FACE.LATIN:(i===0||boolKey(i)?FACE.BODY:FACE.LATIN),w=l.width(vf,val);l.text(Math.max(80,125-w),y+(vf===FACE.BODY?0:2),vf,val);}}}
 
 function renderRedesign(state,canvas){const l=canvas.__grsRedesignLCD||(canvas.__grsRedesignLCD=UI.createLCD(canvas));l.clear();const u=state.u||{};if(u.page==='trend')renderTrend(l,state);else if(u.page==='settings')renderSettings(l,state);else if(u.mode==='total')renderTotal(l,state);else renderRate(l,state);l.present();canvas.dataset.frameCrc=l.crc32().toString(16).padStart(8,'0');return l.buf;}
 
