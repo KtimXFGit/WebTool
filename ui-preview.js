@@ -173,6 +173,10 @@ function renderCompact(state,canvas){
   compactHeader(l,m,s);
 
   const rate=UI.formatDoseRate(m.dose);
+  // 主剂量率左侧使用更小的 HAXRCORP 5×7 字体，分两行显示 Dose / Rate。
+  l.text(3,22,FACE.HAX,'Dose');
+  l.text(3,30,FACE.HAX,'Rate');
+
   const valueWidth=l.width(PREVIEW_FACE_LOGISOSO32,rate.value);
   const valueX=Math.max(10,trunc((128-valueWidth)/2));
   l.text(valueX,42,PREVIEW_FACE_LOGISOSO32,rate.value);
@@ -246,7 +250,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简主界面左上仅保留 3×5 小号整数温度；右上依次显示 6×6 小号声音、灯光、振动状态，并将电池图标移到最右侧。主区继续使用居中大号 U8g2 剂量率，下方为 0.1 uSv/h～100 mSv/h 对数量级条，标签在线上方、三角指针在线下方。Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简主界面左上仅保留 3×5 小号整数温度；右上依次显示 6×6 小号声音、灯光、振动状态，并将电池图标移到最右侧。主剂量率左侧新增两行 HAXRCORP 小字 Dose / Rate，主区继续使用大号 U8g2 剂量率，下方为 0.1 uSv/h～100 mSv/h 对数量级条，标签在线上方、三角指针在线下方。Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
