@@ -88,13 +88,13 @@ function drawLogRangeBar(l,doseCenti){
 }
 function renderRate(l,state){
   const {m,s,u}=state;drawTimeHeader(l,m,s);
-  const rate=UI.formatDoseRate(m.dose);const x=trunc((128-l.width(MAIN_FACE,rate.value))/2);l.text(x,42,MAIN_FACE,rate.value);
+  const rate=UI.formatDoseRate(m.dose);const x=Math.max(0,trunc((128-l.width(MAIN_FACE,rate.value))/2)-3);l.text(x,42,MAIN_FACE,rate.value);
   const uw=l.width(FACE.LATIN,rate.unit);l.text(Math.max(0,126-uw),42,FACE.LATIN,rate.unit);drawLogRangeBar(l,m.dose);if(Date.now()<(u.hint||0))drawHold(l,s);
 }
 function totalFace(total){return total.unit==='Sv'&&Number(total.value)>=9999?SMALL_TOTAL_FACE:MAIN_FACE;}
 function renderTotal(l,state){
   const {m,s,u}=state;drawEnvHeader(l,m,s);const total=UI.formatTotal(m.total),face=totalFace(total),base=face===MAIN_FACE?42:40;
-  const x=trunc((128-l.width(face,total.value))/2);l.text(x,base,face,total.value);const uw=l.width(FACE.LATIN,total.unit);l.text(Math.max(0,126-uw),42,FACE.LATIN,total.unit);
+  const x=Math.max(0,trunc((128-l.width(face,total.value))/2)-3);l.text(x,base,face,total.value);const uw=l.width(FACE.LATIN,total.unit);l.text(Math.max(0,126-uw),42,FACE.LATIN,total.unit);
   const sec=Math.max(0,Math.floor(m.totalSec||0)),days=Math.min(9999,Math.floor(sec/86400)),hours=Math.floor(sec/3600)%24,mins=Math.floor(sec/60)%60;
   l.centerText(0,42,56,FACE.LATIN,`${days}D`);l.centerText(43,42,56,FACE.LATIN,`${two(hours)}H`);l.centerText(86,42,56,FACE.LATIN,`${two(mins)}M`);if(Date.now()<(u.hint||0))drawHold(l,s);
 }
@@ -102,11 +102,43 @@ function renderTotal(l,state){
 function shortDose(centi){const u=Math.max(0,Number(centi)||0)/100;if(u<10)return `${u.toFixed(1)}u`;if(u<1000)return `${Math.round(u)}u`;const ms=u/1000;if(ms<10)return `${ms.toFixed(1)}m`;if(ms<1000)return `${Math.round(ms)}m`;return `${(ms/1000).toFixed(1)}S`;}
 function logY(centi,top=4,bottom=52){const u=Math.max(.1,(Math.max(0,Number(centi)||0))/100),r=clamp((Math.log10(u)+1)/6,0,1);return bottom-Math.round(r*(bottom-top));}
 function renderTrend(l,state){
-  const {m}=state,history=(Array.isArray(m.doseHistory)&&m.doseHistory.length?m.doseHistory:liveDoseHistory).slice(-60);const L=18,R=88,T=4,B=52;l.vline(L-1,T,B-T+1);l.hline(L-1,B,R-L+2);
-  const majors=[[10,'.1u'],[1000,'10u'],[100000,'1m'],[10000000,'100m']];for(const [v,t] of majors){const y=logY(v,T,B);l.hline(L-3,y,3);microText(l,0,clamp(y-2,0,59),t);}for(let d=-1;d<=5;d++){const centi=Math.pow(10,d)*100,y=logY(centi,T,B);l.pixel(L-1,y);}
-  if(history.length){let px=L,py=logY(history[0],T,B);for(let i=1;i<history.length;i++){const x=L+Math.round(i*(R-L)/Math.max(1,history.length-1)),y=logY(history[i],T,B);l.line(px,py,x,y);px=x;py=y;}}
-  microText(l,L-1,58,'0');microText(l,51,58,'30');microText(l,80,58,'60s');
-  microText(l,94,3,`A${shortDose(m.avg||m.dose||0)}`);microText(l,94,10,`M${shortDose(m.peak||m.dose||0)}`);microText(l,94,17,`CPS${Math.max(0,Math.floor(m.cps||0))}`);microText(l,94,24,`CPM${Math.max(0,Math.floor(m.cpm||0))}`);
+  const {m}=state;
+  const history=(Array.isArray(m.doseHistory)&&m.doseHistory.length?m.doseHistory:liveDoseHistory).slice(-60);
+  const AX=1,L=20,R=123,T=15,B=52;
+
+  // 顶部两行参数：标签和值分栏，避免 AVG/MAX/CPS/CPM 与数字粘连。
+  microText(l,2,1,'AVG'); microText(l,22,1,shortDose(m.avg||m.dose||0));
+  microText(l,66,1,'MAX');microText(l,86,1,shortDose(m.peak||m.dose||0));
+  microText(l,2,8,'CPS'); microText(l,22,8,String(Math.max(0,Math.floor(m.cps||0))));
+  microText(l,66,8,'CPM');microText(l,86,8,String(Math.max(0,Math.floor(m.cpm||0))));
+
+  // Y 轴在左侧；刻度尺统一向右，刻度值也放在轴的右侧。
+  l.vline(AX,T,B-T+1);
+  l.hline(AX,B,R-AX+1); // X 轴延长到接近右边界。
+  const majors=[[10,'.1u'],[1000,'10u'],[100000,'1m'],[10000000,'100m']];
+  for(const [v,t] of majors){
+    const y=logY(v,T,B);
+    l.hline(AX,y,4);
+    microText(l,6,clamp(y-2,T-2,B-4),t);
+  }
+  for(let d=-1;d<=5;d++){
+    const centi=Math.pow(10,d)*100,y=logY(centi,T,B);
+    l.hline(AX,y,2);
+  }
+
+  // 60 秒剂量率历史改为 1 px 竖向条形图。
+  if(history.length){
+    for(let i=0;i<history.length;i++){
+      const x=L+Math.round(i*(R-L)/Math.max(1,history.length-1));
+      const y=clamp(logY(history[i],T,B),T,B);
+      l.vline(x,y,B-y+1);
+    }
+  }
+
+  // X 轴保持接近 Production 原长度，0/30/60s 使用 3×5 小字。
+  microText(l,L-1,58,'0');
+  microText(l,69,58,'30');
+  microText(l,113,58,'60s');
 }
 
 const SETTINGS_LABELS=[IDS.LANGUAGE,IDS.ALARM_THRESHOLD,IDS.BACKLIGHT_SWITCH,IDS.BACKLIGHT,IDS.AUTO_SLEEP,IDS.KEY_SOUND,IDS.KEY_VIB,IDS.GM_SOUND,IDS.ALARM_SOUND,IDS.ALARM_LIGHT,IDS.ALARM_VIB,IDS.DATE_TIME,IDS.TOTAL_DOSE,IDS.DATA,IDS.DEVICE_INFO,IDS.RESTORE,IDS.RETURN_HOME];
@@ -146,6 +178,6 @@ UI.render=function(state,canvas){
   lastBaseState=state;sampleLive(state);const key=testSelect?.value||'auto',effective=applyTest(state,key),mode=currentMode();const prior=prevRender(effective,canvas);if(mode==='production'){syncCompare(effective,canvas,mode);return prior;}const out=renderRedesign(effective,canvas);syncCompare(effective,canvas,mode);const st=document.getElementById('uiStateText');if(st&&key!=='auto')st.textContent=`显示测试：${TESTS.find(x=>x[0]===key)?.[1]||key}`;return out;
 };
 
-function installTestUI(){const controls=document.querySelector('.simulator-card .inline-controls');if(!controls||document.getElementById('displayTest'))return;const group=document.createElement('span');group.className='ui-preview-control display-test-control';const label=document.createElement('label');label.htmlFor='displayTest';label.textContent='显示测试';testSelect=document.createElement('select');testSelect.id='displayTest';for(const [v,t] of TESTS){const o=document.createElement('option');o.value=v;o.textContent=t;testSelect.appendChild(o);}const prev=document.createElement('button');prev.type='button';prev.textContent='‹';prev.title='上一个测试值';const next=document.createElement('button');next.type='button';next.textContent='›';next.title='下一个测试值';const rerender=()=>{const lcd=document.getElementById('lcd');if(lcd&&lastBaseState)UI.render(lastBaseState,lcd);};testSelect.addEventListener('change',rerender);prev.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex-1+testSelect.options.length)%testSelect.options.length;rerender();});next.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex+1)%testSelect.options.length;rerender();});group.append(label,testSelect,prev,next);controls.appendChild(group);const note=document.querySelector('.ui-preview-note');if(note)note.textContent='精简 UI V3：Dose Rate 左上显示 HH:MM，主剂量率取消 Dose / Rate 标签并按整屏居中，uSv/h 与 mSv/h 恢复使用字体自身的斜杠；Total Dose 左上显示整数温度与湿度，取消 Dose 标签并按整屏居中。主数值统一固定字号与槽位，9999 Sv 自动切换小一档字体；趋势页使用剂量率对数 Y 轴并显示 Avg / Max / CPS / CPM；设置页采用同款状态栏、无分割线和轨道中置滑块。可使用“显示测试”逐项检查边界数值。';}
+function installTestUI(){const controls=document.querySelector('.simulator-card .inline-controls');if(!controls||document.getElementById('displayTest'))return;const group=document.createElement('span');group.className='ui-preview-control display-test-control';const label=document.createElement('label');label.htmlFor='displayTest';label.textContent='显示测试';testSelect=document.createElement('select');testSelect.id='displayTest';for(const [v,t] of TESTS){const o=document.createElement('option');o.value=v;o.textContent=t;testSelect.appendChild(o);}const prev=document.createElement('button');prev.type='button';prev.textContent='‹';prev.title='上一个测试值';const next=document.createElement('button');next.type='button';next.textContent='›';next.title='下一个测试值';const rerender=()=>{const lcd=document.getElementById('lcd');if(lcd&&lastBaseState)UI.render(lastBaseState,lcd);};testSelect.addEventListener('change',rerender);prev.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex-1+testSelect.options.length)%testSelect.options.length;rerender();});next.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex+1)%testSelect.options.length;rerender();});group.append(label,testSelect,prev,next);controls.appendChild(group);const note=document.querySelector('.ui-preview-note');if(note)note.textContent='精简 UI V3：Dose Rate 左上显示 HH:MM，主剂量率取消 Dose / Rate 标签并在整屏中心基础上左移 3 px，uSv/h 与 mSv/h 恢复使用字体自身的斜杠；Total Dose 左上显示整数温度与湿度，取消 Dose 标签并在整屏中心基础上左移 3 px。主数值统一固定字号与槽位，9999 Sv 自动切换小一档字体；趋势页使用剂量率对数 Y 轴、右向刻度与条形历史，并分栏显示 AVG / MAX / CPS / CPM；设置页采用同款状态栏、无分割线和轨道中置滑块。可使用“显示测试”逐项检查边界数值。';}
 if(typeof document!=='undefined')installTestUI();
 })();
