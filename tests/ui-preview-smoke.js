@@ -86,11 +86,16 @@ let pointerFound=false;
 for(let x=30;x<=35;x++)pointerFound=pointerFound||bit(doseFrame.buf,x,51)===1;
 assert(pointerFound,'2.06 uSv/h log pointer is not in expected decade position');
 
-// 9) Dose 已完全移除：原右上 Dose 文本区域必须保持空白。
+// 9) 标签改用 HAXRCORP 并收进屏幕：最底 y=63 应保持空白，不再发生裁切。
+for(let x=0;x<128;x++)assert(bit(a.buf,x,63)===0,`bottom label clipping at x=${x}`);
+// 单位结束于 y=50，量级指针从 y=51 开始；基准低量程下右侧不应发生重叠。
+for(let x=90;x<128;x++)assert(bit(a.buf,x,51)===0,`unit/log pointer vertical overlap at x=${x}`);
+
+// 10) Dose 已完全移除：原右上 Dose 文本区域必须保持空白。
 for(let y=12;y<=19;y++)for(let x=108;x<128;x++)
   assert(bit(a.buf,x,y)===0,`Dose residue at ${x},${y}`);
 
-// 10) 主读数为底部量级条让位后上移，中心区域应在 y=10..42 内有足够像素。
+// 11) 主读数为底部量级条让位后上移，中心区域应在 y=10..42 内有足够像素。
 let mainPixels=0;
 for(let y=10;y<=42;y++)for(let x=18;x<110;x++)mainPixels+=bit(a.buf,x,y);
 assert(mainPixels>30,'main value missing after log-range layout change');

@@ -67,7 +67,7 @@ function drawLogRangeBar(l,doseCenti){
   for(let decade=minLog;decade<=maxLog;decade++){
     const ratio=(decade-minLog)/(maxLog-minLog);
     const x=x1+Math.round((x2-x1)*ratio);
-    l.vline(x,y-1,3);
+    l.vline(x,y-2,3);
   }
 
   const labels=[
@@ -79,9 +79,9 @@ function drawLogRangeBar(l,doseCenti){
   for(const item of labels){
     const ratio=(item.decade-minLog)/(maxLog-minLog);
     const center=x1+Math.round((x2-x1)*ratio);
-    const width=l.width(FACE.LATIN,item.text);
+    const width=l.width(FACE.HAX,item.text);
     const x=clamp(center-trunc(width/2),0,127-width);
-    l.text(x,63,FACE.LATIN,item.text);
+    l.text(x,63,FACE.HAX,item.text);
   }
 
   // 当前剂量率位置指针：小实心三角形，位于量级横线上方。
@@ -115,7 +115,7 @@ function renderCompact(state,canvas){
   l.text(valueX,42,PREVIEW_FACE_LOGISOSO32,rate.value);
 
   const unitWidth=l.width(FACE.LATIN,rate.unit);
-  l.text(Math.max(0,126-unitWidth),49,FACE.LATIN,rate.unit);
+  l.text(Math.max(0,126-unitWidth),43,FACE.LATIN,rate.unit);
   drawLogRangeBar(l,m.dose);
 
   if(Date.now()<(u.hint||0))drawHold(l,s);
@@ -183,7 +183,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简主界面采用整数温度、顶部状态图标、居中大号 U8g2 剂量率，以及底部 0.1 uSv/h～100 mSv/h 对数量级条与当前位置三角指针；左侧阶梯量程条和 Dose 文本已移除。Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简主界面采用整数温度、顶部状态图标、居中大号 U8g2 剂量率，以及主读数下方、标签位于刻度线上方的 0.1 uSv/h～100 mSv/h 对数量级条与当前位置三角指针；左侧阶梯量程条和 Dose 文本已移除。Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
