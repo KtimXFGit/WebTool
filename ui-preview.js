@@ -61,6 +61,22 @@ function drawCompactTemperature(l,m,x=18){
   tinyText(l,degreeX+3,y,'C');
   return degreeX+6;
 }
+function drawCompactSound(l,muted){
+  // 6×6 单色声音图标：比 Production 的 8×8 图标更轻，保持整像素锐利。
+  const x=120,y=1;
+  const rows=[
+    '001000',
+    '011010',
+    '111001',
+    '111001',
+    '011010',
+    '001000'
+  ];
+  for(let yy=0;yy<6;yy++)for(let xx=0;xx<6;xx++)if(rows[yy][xx]==='1')l.pixel(x+xx,y+yy);
+  // 静音时在图标内部加斜杠，不增加外部占用尺寸。
+  if(muted)l.line(x+1,y,x+5,y+5);
+}
+
 function compactHeader(l,m,s){
   // 左上状态组改为“电池 → 温度”。电池整体较上一版上移 1 px。
   const batteryX=1,batteryY=1;
@@ -70,16 +86,8 @@ function compactHeader(l,m,s){
   for(let bar=0;bar<level;bar++)l.box(batteryX+2+bar*3,batteryY+2,2,2);
   drawCompactTemperature(l,m,18);
 
-  // 顶部仅保留声音状态；灯光、振动图标从精简主界面移除。
-  if(s.alarmSound){
-    const soundX=116;
-    l.glyph(soundX,1,FACE.ICON,ICON.SOUND);
-    if(m.muted){
-      l.box(122,1,4,8,0);
-      l.line(122,2,125,6);
-      l.line(125,2,122,6);
-    }
-  }
+  // 顶部仅保留 6×6 小号声音状态；灯光、振动图标从精简主界面移除。
+  if(s.alarmSound)drawCompactSound(l,m.muted);
 }
 // 当前 Production 资源中最小正式文本 face 是 HAXRCORP 5×7。
 // 精简页为顶部温度和量程标签复用 3×5 1-bit 微型字模，以降低状态栏视觉重量。
@@ -212,7 +220,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简主界面左上采用“电池 → 3×5 小号整数温度”排列，电池整体上移 1 px；顶部仅保留声音状态，灯光和振动图标已移除。主区继续使用居中大号 U8g2 剂量率，下方为 0.1 uSv/h～100 mSv/h 对数量级条，标签在线上方、三角指针在线下方。Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简主界面左上采用“电池 → 3×5 小号整数温度”排列，电池整体上移 1 px；顶部仅保留 6×6 小号声音状态，灯光和振动图标已移除。主区继续使用居中大号 U8g2 剂量率，下方为 0.1 uSv/h～100 mSv/h 对数量级条，标签在线上方、三角指针在线下方。Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
