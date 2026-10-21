@@ -55,24 +55,31 @@ q.m.totalSec=9999*86400+23*3600+59*60;const extreme=render(q);let bottomPixels=0
 assert(GRSProductionUI.redesignDebug.shortDose(160)==='1.6u','short dose should render 1.6u');
 assert(GRSProductionUI.redesignDebug.logY(10)>GRSProductionUI.redesignDebug.logY(1000),'log Y mapping must rise with dose');
 q=clone();q.u.page='trend';const trend=render(q);assert(trend.buf.length===1024,'trend render failed');
-assert(bit(trend.buf,1,53)===1&&bit(trend.buf,124,53)===1,'trend X axis no longer spans to the right boundary');
-assert(bit(trend.buf,22,56)===1&&bit(trend.buf,73,56)===1&&bit(trend.buf,124,56)===1,'trend X major ticks are not downward-facing');
-assert(count(trend.buf,6,43,18,47)>6,'trend .1u Y label is missing or clipped');
-assert(bit(trend.buf,2,51)===1,'trend 0~.1u minor Y tick is missing');
-assert(count(trend.buf,120,58,122,62)>5,'trend 60s suffix is clipped');
+assert(bit(trend.buf,22,53)===1&&bit(trend.buf,124,53)===1,'trend X axis no longer spans to the right boundary');
+assert(bit(trend.buf,25,56)===1&&bit(trend.buf,75,56)===1&&bit(trend.buf,124,56)===1,'trend X major ticks are not downward-facing');
+assert(count(trend.buf,22,58,28,62)>5,'trend 0S label missing');
+assert(count(trend.buf,70,58,80,62)>8,'trend 30S label missing');
+assert(count(trend.buf,113,58,124,62)>8,'trend 60S label missing');
+for(const y of [5,19,33,47]) assert(bit(trend.buf,18,y)===1&&bit(trend.buf,22,y)===1,`trend left-facing Y tick missing at y=${y}`);
+assert(count(trend.buf,0,3,14,9)>6,'trend 100m Y label missing');
+assert(count(trend.buf,0,17,14,23)>3,'trend 1m Y label missing');
+assert(count(trend.buf,0,31,14,37)>5,'trend 10u Y label missing');
+assert(count(trend.buf,0,45,14,51)>5,'trend .1u Y label missing');
+assert(bit(trend.buf,20,50)===1,'trend 0~.1u minor Y tick is missing');
 const trendSource=redesignSource;
-assert(trendSource.includes("l.hline(AX,y,5)"),'trend Y major ticks are not right-facing');
-assert(trendSource.includes("microText(l,6,clamp(y-5,0,YB-5),t)"),'trend Y labels are not safely positioned on the right side of the axis');
-assert(trendSource.includes("BAR_W=3")&&trendSource.includes("l.box(x,y,BAR_W,B-y+1)"),'trend history is not rendered as wider filled bars');
+assert(trendSource.includes("const AX=22,L=25,R=124,T=5,Y_TOP=5,Y_LOW=47,B=53"),'trend plot geometry regressed');
+assert(trendSource.includes("[10000000,'100m',5]")&&trendSource.includes("[10,'.1u',47]"),'trend evenly-spaced major Y ticks regressed');
+assert(trendSource.includes("l.hline(AX-4,y,5)"),'trend Y major ticks are not left-facing');
+assert(trendSource.includes("microRight(l,AX-7"),'trend Y labels are not on the left side of the axis');
+assert(trendSource.includes("'0S'")&&trendSource.includes("'30S'")&&trendSource.includes("'60S'"),'trend X labels are missing seconds suffixes');
+assert(trendSource.includes("const x0=L+Math.floor(b*PLOT_W/BUCKETS)")&&trendSource.includes("const x1=L+Math.floor((b+1)*PLOT_W/BUCKETS)-1"),'trend bars are no longer continuous bucket slots');
 assert(!trendSource.includes("l.line(px,py,x,y)"),'old trend polyline rendering still present');
-assert(trendSource.includes("const AX=1,L=22,R=124,T=4,YB=48,B=53"),'trend plot geometry regressed');
-assert(trendSource.includes("const lowMinorY=Math.round((YB+B)/2)"),'trend low-range minor tick mapping regressed');
-assert(trendSource.includes("x60-microWidth('60s')-1"),'trend 60s label right-padding regressed');
+assert(trendSource.includes("const lowMinorY=Math.round((Y_LOW+B)/2)"),'trend low-range minor tick mapping regressed');
 assert(trendSource.includes("frontText(30,1,'AVG'); frontText(49,1")&&trendSource.includes("frontText(80,8,'CPM'); frontText(99,8"),'trend statistic foreground spacing regressed');
 assert(trendSource.includes("l.box(Math.max(0,x-1)"),'trend foreground text no longer clears the background bars');
 let wideBar=false;
-for(let y=16;y<53&&!wideBar;y++)for(let x=22;x<=122;x++)if(bit(trend.buf,x,y)&&bit(trend.buf,x+1,y)&&bit(trend.buf,x+2,y)){wideBar=true;break;}
-assert(wideBar,'trend bars are still visually 1 px thin');
+for(let y=16;y<53&&!wideBar;y++)for(let x=25;x<=122;x++)if(bit(trend.buf,x,y)&&bit(trend.buf,x+1,y)&&bit(trend.buf,x+2,y)){wideBar=true;break;}
+assert(wideBar,'trend bars are still visually too thin');
 assert(trendSource.includes("/2)-3);l.text(x,42,MAIN_FACE,rate.value)"),'Rate value left shift missing');
 assert(trendSource.includes("/2)-3);l.text(x,base,face,total.value)"),'Total value left shift missing');
 
