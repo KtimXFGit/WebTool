@@ -8,6 +8,9 @@ const MAIN_FACE=8;
 const SMALL_TOTAL_FACE=FACE.TIMR24;
 const prevRender=UI.render;
 
+// 修正精简主读数字体中的 0：原预览子集只携带了 29 行有效位图，
+// 其余数字为完整 32 行，导致 0 在 0.08 / 0.16 等值中明显偏矮。
+// 保持原 20 px advance 和 16 px glyph width，只补齐到 32 行视觉高度。
 const FIXED_ZERO_B64='B+Af+D/8f/58Pvgf+B/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/4H/gffD5//j/8H/gH4A==';
 if(window.GRSUIFaces?.[MAIN_FACE]?.glyphs?.['48']){
   window.GRSUIFaces[MAIN_FACE].glyphs['48']=[16,32,20,2,-32,FIXED_ZERO_B64];
@@ -30,7 +33,7 @@ const MICRO={
   'H':['101','101','111','101','101'],'M':['101','111','111','101','101'],
   'A':['010','101','111','101','101'],'X':['101','101','010','101','101'],
   'C':['111','100','100','100','111'],'P':['110','101','110','100','100'],
-  'R':['110','101','110','101','101'],'S':['111','100','111','001','111'],
+  'R':['110','101','110','101','101'],'S':['011','100','010','001','110'],
   'V':['101','101','101','101','010'],'G':['111','100','101','101','111'],
   'L':['100','100','100','100','111'],'T':['111','010','010','010','010'],
   'E':['111','100','110','100','111'],'I':['111','010','010','010','111'],
@@ -101,42 +104,63 @@ function logY(centi,top=4,bottom=52){const u=Math.max(.1,(Math.max(0,Number(cent
 function renderTrend(l,state){
   const {m}=state;
   const history=(Array.isArray(m.doseHistory)&&m.doseHistory.length?m.doseHistory:liveDoseHistory).slice(-60);
-  const AX=1,L=22,R=124,T=4,YB=48,B=53;
+  const AX=22,L=25,R=124,T=5,Y_TOP=5,Y_LOW=47,B=53;
+
+  // Y 轴主量级严格等间距：100m / 1m / 10u / .1u 每级相隔 14 px。
+  // 0~.1u 单独保留 6 px 低端区间，不破坏主对数量级的等距关系。
+  const trendY=(centi)=>{
+    const u=Math.max(0,Number(centi)||0)/100;
+    if(u<=0.1)return B-Math.round(clamp(u/0.1,0,1)*(B-Y_LOW));
+    const r=clamp((Math.log10(u)+1)/6,0,1);
+    return Y_LOW-Math.round(r*(Y_LOW-Y_TOP));
+  };
 
   l.vline(AX,T,B-T+1);
   l.hline(AX,B,R-AX+1);
-  const majors=[[10,'.1u'],[1000,'10u'],[100000,'1m'],[10000000,'100m']];
-  for(const [v,t] of majors){
-    const y=logY(v,T,YB);
-    l.hline(AX,y,5);
-    microText(l,6,clamp(y-5,0,YB-5),t);
-  }
-  for(let d=-1;d<=5;d++){
-    const centi=Math.pow(10,d)*100,y=logY(centi,T,YB);
-    l.hline(AX,y,3);
-  }
-  const lowMinorY=Math.round((YB+B)/2);
-  l.hline(AX,lowMinorY,2);
 
+  // 主刻度和刻度值均位于 Y 轴左侧。
+  const majors=[
+    [10000000,'100m',5],
+    [100000,'1m',19],
+    [1000,'10u',33],
+    [10,'.1u',47]
+  ];
+  for(const [,text,y] of majors){
+    l.hline(AX-4,y,5);
+    microRight(l,AX-7,clamp(y-2,0,59),text);
+  }
+
+  // 每个 decade 的小刻度同样朝左；0~.1u 之间保留一个额外短刻度。
+  for(let d=-1;d<=5;d++){
+    const centi=Math.pow(10,d)*100,y=trendY(centi);
+    l.hline(AX-2,y,3);
+  }
+  const lowMinorY=Math.round((Y_LOW+B)/2);
+  l.hline(AX-2,lowMinorY,3);
+
+  // 60 秒压缩为 30 个连续柱块；各柱槽首尾相接，不再出现固定 1 px 间隙。
   if(history.length){
-    const BUCKETS=Math.min(30,history.length),BAR_W=3;
+    const BUCKETS=Math.min(30,history.length),PLOT_W=R-L+1;
     for(let b=0;b<BUCKETS;b++){
       const i0=Math.floor(b*history.length/BUCKETS);
       const i1=Math.max(i0+1,Math.floor((b+1)*history.length/BUCKETS));
       let peak=0;
       for(let i=i0;i<i1&&i<history.length;i++)peak=Math.max(peak,Number(history[i])||0);
-      const x=L+Math.round(b*(R-L-BAR_W+1)/Math.max(1,BUCKETS-1));
-      const y=clamp(logY(peak,T,YB),T,YB);
-      l.box(x,y,BAR_W,B-y+1);
+      const x0=L+Math.floor(b*PLOT_W/BUCKETS);
+      const x1=L+Math.floor((b+1)*PLOT_W/BUCKETS)-1;
+      const y=clamp(trendY(peak),T,B);
+      l.box(x0,y,Math.max(1,x1-x0+1),B-y+1);
     }
   }
 
+  // X 轴三个主刻度均向下，统一显示秒单位：0S / 30S / 60S。
   const x0=L,x30=Math.round((L+R)/2),x60=R;
   l.vline(x0,B,4);l.vline(x30,B,4);l.vline(x60,B,4);
-  microText(l,x0-1,58,'0');
-  microText(l,x30-trunc(microWidth('30')/2),58,'30');
-  microText(l,x60-microWidth('60s')-1,58,'60s');
+  microText(l,x0-trunc(microWidth('0S')/2),58,'0S');
+  microText(l,x30-trunc(microWidth('30S')/2),58,'30S');
+  microText(l,x60-microWidth('60S')+1,58,'60S');
 
+  // 前景层：参数最后绘制，局部清除文字区域，高柱可以进入参数区。
   const frontText=(x,y,text)=>{
     const w=microWidth(text);
     l.box(Math.max(0,x-1),Math.max(0,y-1),Math.min(128-x+1,w+2),7,0);
@@ -150,7 +174,7 @@ function renderTrend(l,state){
 
 const SETTINGS_LABELS=[IDS.LANGUAGE,IDS.ALARM_THRESHOLD,IDS.BACKLIGHT_SWITCH,IDS.BACKLIGHT,IDS.AUTO_SLEEP,IDS.KEY_SOUND,IDS.KEY_VIB,IDS.GM_SOUND,IDS.ALARM_SOUND,IDS.ALARM_LIGHT,IDS.ALARM_VIB,IDS.DATE_TIME,IDS.TOTAL_DOSE,IDS.DATA,IDS.DEVICE_INFO,IDS.RESTORE,IDS.RETURN_HOME];
 function boolKey(i){return ({2:'backlightOn',4:'autoSleep',5:'keySound',6:'keyVib',7:'gmSound',8:'alarmSound',9:'alarmLight',10:'alarmVib'})[i];}
-function settingValue(l,state,i,lang){const {s}=state;if(i===0)return s.lang==='en'?l.string(IDS.ENGLISH,lang):l.string(IDS.CHINESE,lang);if(i===1){const d=UI.formatDoseRate(s.threshold);return `${d.value}${d.unit.replace('Sv/h','')}`;}if(i===3)return `${s.backlight}%`;const k=boolKey(i);if(k)return l.string(s[k]?IDS.ON:IDS.OFF,lang);return '>';}
+function settingValue(l,state,i,lang){const {s}=state;if(i===0)return s.lang==='en'?l.string(IDS.ENGLISH,lang):l.string(IDS.CHINESE,lang);if(i===1){const d=UI.formatDoseRate(s.threshold);return `${d.value}${d.unit.replace('Sv/h','')}`;}if(i===3)return `${s.backlight}%`;const k=boolKey(i);if(k)return l.string(s[k]?IDS.ON:IDS.OFF,lang);return '>';} 
 function drawScrollThumb(l,sel,count){const y1=12,y2=60;l.vline(3,y1,y2-y1+1);const pos=y1+Math.round((Math.max(0,Math.min(count-1,sel))*(y2-y1-4))/Math.max(1,count-1));l.frame(1,pos,5,5);l.box(2,pos+1,3,3);}
 function renderSettingsSub(l,state){const {m,s,u,c}=state,lang=s.lang==='en'?'en':'zh';drawTimeHeader(l,m,s);const face=lang==='en'?FACE.LATIN:FACE.BODY;
   if(u.sub==='device'){l.text(9,17,face,l.string(IDS.FIRMWARE,lang));l.text(9,34,face,l.string(IDS.RESOURCE,lang));l.text(74,19,FACE.LATIN,c.info?`0x${Number(c.info.applicationVersion).toString(16).toUpperCase()}`:'SIM');l.text(74,36,FACE.LATIN,c.res?`0x${Number(c.res.activeVersion).toString(16).toUpperCase()}`:'SIM');return;}
