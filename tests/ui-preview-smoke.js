@@ -104,23 +104,23 @@ let mainPixels=0;
 for(let y=10;y<=42;y++)for(let x=18;x<110;x++)mainPixels+=bit(a.buf,x,y);
 assert(mainPixels>30,'main value missing after log-range layout change');
 
-// 12) 精简顶部状态：左上按“电池 → 3×5 温度”排列；灯光/振动图标已移除。
+// 12) 精简顶部状态：左侧仅保留 3×5 温度；右侧恢复声音/灯光/振动并把电池移到最右。
 let tempPixels=0;
-for(let y=1;y<=6;y++)for(let x=18;x<36;x++)tempPixels+=bit(a.buf,x,y);
-assert(tempPixels>8,'compact tiny temperature missing after swap');
-for(let y=8;y<=9;y++)for(let x=18;x<36;x++)
-  assert(bit(a.buf,x,y)===0,`old large temperature residue at ${x},${y}`);
-// 电池位于最左侧并整体上移 1 px：框 y=1..6，端子位于 x=13, y=3..4。
-for(const [x,y] of [[1,1],[12,1],[1,6],[12,6],[13,3],[13,4]])
-  assert(bit(a.buf,x,y)===1,`swapped battery pixel missing at ${x},${y}`);
-// 灯光、振动原位置必须为空；声音状态使用右上角 6×6 小图标。
-for(let y=0;y<10;y++)for(let x=88;x<112;x++)
-  assert(bit(a.buf,x,y)===0,`removed light/vibration icon residue at ${x},${y}`);
-// 原 8×8 声音图标左侧区域应清空，新图标仅占 x=120..125、y=1..6。
-for(let y=0;y<10;y++)for(let x=114;x<120;x++)
-  assert(bit(a.buf,x,y)===0,`old large sound icon residue at ${x},${y}`);
-let soundPixels=0;
-for(let y=1;y<=6;y++)for(let x=120;x<=125;x++)soundPixels+=bit(a.buf,x,y);
-assert(soundPixels>=10&&soundPixels<=22,'compact 6x6 sound icon pixel count unexpected');
+for(let y=1;y<=6;y++)for(let x=1;x<19;x++)tempPixels+=bit(a.buf,x,y);
+assert(tempPixels>8,'compact tiny temperature missing at left');
+// 原左侧电池区域应彻底清空（避开温度实际占用的 x=1..17）。
+for(let y=1;y<=6;y++)for(let x=20;x<34;x++)
+  assert(bit(a.buf,x,y)===0,`old left battery residue at ${x},${y}`);
+// 声音、灯光、振动均采用约 6×6 小图标，并留有 3 px 间隔。
+for(const [name,x1,x2] of [['sound',86,91],['light',95,100],['vibration',104,109]]){
+  let pixels=0;
+  for(let y=1;y<=6;y++)for(let x=x1;x<=x2;x++)pixels+=bit(a.buf,x,y);
+  assert(pixels>=8&&pixels<=24,`${name} mini icon pixel count unexpected: ${pixels}`);
+}
+for(const x of [92,93,94,101,102,103,110,111,112,113])for(let y=1;y<=6;y++)
+  assert(bit(a.buf,x,y)===0,`top icon spacing lost at ${x},${y}`);
+// 电池移到最右侧：框 x=114..125、y=1..6，端子 x=126、y=3..4。
+for(const [x,y] of [[114,1],[125,1],[114,6],[125,6],[126,3],[126,4]])
+  assert(bit(a.buf,x,y)===1,`right battery pixel missing at ${x},${y}`);
 
 console.log(JSON.stringify({compact:a.crc,changedTemp:compact(changedTemp).crc,dose206:doseFrame.crc},null,2));
