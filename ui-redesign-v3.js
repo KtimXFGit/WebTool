@@ -8,9 +8,6 @@ const MAIN_FACE=8;
 const SMALL_TOTAL_FACE=FACE.TIMR24;
 const prevRender=UI.render;
 
-// 修正精简主读数字体中的 0：原预览子集只携带了 29 行有效位图，
-// 其余数字为完整 32 行，导致 0 在 0.08 / 0.16 等值中明显偏矮。
-// 保持原 20 px advance 和 16 px glyph width，只补齐到 32 行视觉高度。
 const FIXED_ZERO_B64='B+Af+D/8f/58Pvgf+B/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/4H/gffD5//j/8H/gH4A==';
 if(window.GRSUIFaces?.[MAIN_FACE]?.glyphs?.['48']){
   window.GRSUIFaces[MAIN_FACE].glyphs['48']=[16,32,20,2,-32,FIXED_ZERO_B64];
@@ -104,25 +101,23 @@ function logY(centi,top=4,bottom=52){const u=Math.max(.1,(Math.max(0,Number(cent
 function renderTrend(l,state){
   const {m}=state;
   const history=(Array.isArray(m.doseHistory)&&m.doseHistory.length?m.doseHistory:liveDoseHistory).slice(-60);
-  const AX=1,L=22,R=124,T=1,B=50;
+  const AX=1,L=22,R=124,T=4,YB=48,B=53;
 
-  // 背景层：Y 轴刻度向右；X 轴刻度向下；历史采用更宽的实心柱块。
   l.vline(AX,T,B-T+1);
   l.hline(AX,B,R-AX+1);
   const majors=[[10,'.1u'],[1000,'10u'],[100000,'1m'],[10000000,'100m']];
   for(const [v,t] of majors){
-    const y=logY(v,T,B);
+    const y=logY(v,T,YB);
     l.hline(AX,y,5);
-    // 标签位于 Y 轴右侧；底部 .1u 上移，避免与 X 轴重叠。
-    microText(l,6,clamp(y-5,0,B-6),t);
+    microText(l,6,clamp(y-5,0,YB-5),t);
   }
   for(let d=-1;d<=5;d++){
-    const centi=Math.pow(10,d)*100,y=logY(centi,T,B);
+    const centi=Math.pow(10,d)*100,y=logY(centi,T,YB);
     l.hline(AX,y,3);
   }
+  const lowMinorY=Math.round((YB+B)/2);
+  l.hline(AX,lowMinorY,2);
 
-  // 60 秒数据压缩为 30 个 2 秒柱块，使用区间最大值保留瞬时峰值。
-  // 每个柱块宽 3 px，明显区别于此前的 1 px 细线。
   if(history.length){
     const BUCKETS=Math.min(30,history.length),BAR_W=3;
     for(let b=0;b<BUCKETS;b++){
@@ -131,19 +126,17 @@ function renderTrend(l,state){
       let peak=0;
       for(let i=i0;i<i1&&i<history.length;i++)peak=Math.max(peak,Number(history[i])||0);
       const x=L+Math.round(b*(R-L-BAR_W+1)/Math.max(1,BUCKETS-1));
-      const y=clamp(logY(peak,T,B),T,B);
+      const y=clamp(logY(peak,T,YB),T,YB);
       l.box(x,y,BAR_W,B-y+1);
     }
   }
 
-  // X 轴主刻度向下伸，标签位于刻度下方。
   const x0=L,x30=Math.round((L+R)/2),x60=R;
   l.vline(x0,B,4);l.vline(x30,B,4);l.vline(x60,B,4);
   microText(l,x0-1,58,'0');
   microText(l,x30-trunc(microWidth('30')/2),58,'30');
-  microText(l,x60-microWidth('60s')+1,58,'60s');
+  microText(l,x60-microWidth('60s')-1,58,'60s');
 
-  // 前景层：参数最后绘制，局部清除文字区域，确保高柱进入参数区时文字仍清楚。
   const frontText=(x,y,text)=>{
     const w=microWidth(text);
     l.box(Math.max(0,x-1),Math.max(0,y-1),Math.min(128-x+1,w+2),7,0);
