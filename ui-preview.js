@@ -105,7 +105,7 @@ function renderCompact(state,canvas){
   const valueX=Math.max(22,trunc((128-valueWidth)/2));
   l.text(valueX,55,PREVIEW_FACE_LOGISOSO32,rate.value);
   const unitWidth=l.width(FACE.T0_11,rate.unit);
-  l.text(Math.max(22,127-unitWidth),63,FACE.T0_11,rate.unit);
+  l.text(Math.max(22,126-unitWidth),62,FACE.T0_11,rate.unit);
 
   if(Date.now()<(u.hint||0))drawHold(l,s);
   l.present();
