@@ -60,14 +60,22 @@ function activeRangeCenti(doseCenti){
 }
 
 function drawRangeBar(l,doseCenti){
-  // 左侧竖向量程条，填充由下向上增长，避免侵占主剂量率横向空间。
-  const x=2,y=24,w=6,h=34;
+  // 参考阶梯式量程图：8 条水平线由上到下逐级缩短。
+  // 128×64 下最长 28 px、级间距 4 px，可形成明确层次且不侵占主读数区。
+  const x=3;
+  const y0=27;
+  const gap=4;
+  const widths=[28,25,22,19,16,13,10,7];
   const range=activeRangeCenti(doseCenti);
   const ratio=clamp((Math.max(0,Number(doseCenti)||0))/range,0,1);
-  const innerH=h-4;
-  l.frame(x,y,w,h);
-  const fill=Math.round(innerH*ratio);
-  if(fill>0)l.box(x+2,y+h-2-fill,2,fill);
+  const activeCount=ratio>0?Math.max(1,Math.ceil(widths.length*ratio)):0;
+
+  for(let i=0;i<widths.length;i++){
+    const y=y0+i*gap;
+    l.hline(x,y,widths[i]);
+    // 量程进度由下向上高亮；在单色屏上用 2 px 厚度区分激活级。
+    if(i>=widths.length-activeCount)l.hline(x,y+1,widths[i]);
+  }
 }
 
 function drawHold(l,s){
@@ -85,21 +93,22 @@ function renderCompact(state,canvas){
   const lang=langOf(s);
   compactHeader(l,m,s);
 
-  // 精简版：顶部左侧整数温度；Dose 右上；左侧竖向自动量程条；
-  // 大号剂量率位于剩余主显示区，单位固定右下角。
+  // 精简版：顶部左侧整数温度；Dose 右上；左侧阶梯式自动量程条；
+  // 大号剂量率在右侧剩余空间重新居中，单位固定右下角。
   const doseLabel=l.string(IDS.MAIN_DOSE,lang);
   const doseWidth=l.width(FACE.SIX10,doseLabel);
-  l.text(Math.max(10,127-doseWidth),20,FACE.SIX10,doseLabel);
+  l.text(Math.max(36,127-doseWidth),20,FACE.SIX10,doseLabel);
   drawRangeBar(l,m.dose);
 
   const rate=UI.formatDoseRate(m.dose);
   const valueWidth=l.width(PREVIEW_FACE_LOGISOSO32,rate.value);
-  const valueLeft=10;
-  const valueArea=118;
+  const valueLeft=34;
+  const valueRight=127;
+  const valueArea=valueRight-valueLeft+1;
   const valueX=valueLeft+Math.max(0,trunc((valueArea-valueWidth)/2));
-  l.text(valueX,53,PREVIEW_FACE_LOGISOSO32,rate.value);
+  l.text(valueX,55,PREVIEW_FACE_LOGISOSO32,rate.value);
   const unitWidth=l.width(FACE.T0_11,rate.unit);
-  l.text(Math.max(10,127-unitWidth),63,FACE.T0_11,rate.unit);
+  l.text(Math.max(34,127-unitWidth),63,FACE.T0_11,rate.unit);
 
   if(Date.now()<(u.hint||0))drawHold(l,s);
   l.present();
@@ -166,7 +175,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简 Dose 主界面采用整数温度、右上 Dose、左侧竖向自动量程条、大号 U8g2 剂量率和右下角单位；Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简 Dose 主界面采用整数温度、右上 Dose、左侧 8 级阶梯式自动量程条、大号 U8g2 剂量率和右下角单位；Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
