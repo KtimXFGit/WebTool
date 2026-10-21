@@ -104,15 +104,15 @@ let mainPixels=0;
 for(let y=10;y<=42;y++)for(let x=18;x<110;x++)mainPixels+=bit(a.buf,x,y);
 assert(mainPixels>30,'main value missing after log-range layout change');
 
-// 12) 精简顶部状态：温度使用 3×5 小字，电池紧邻温度；灯光/振动图标已移除。
+// 12) 精简顶部状态：左上按“电池 → 3×5 温度”排列；灯光/振动图标已移除。
 let tempPixels=0;
-for(let y=1;y<=6;y++)for(let x=0;x<18;x++)tempPixels+=bit(a.buf,x,y);
-assert(tempPixels>8,'compact tiny temperature missing');
-for(let y=8;y<=9;y++)for(let x=0;x<18;x++)
+for(let y=1;y<=6;y++)for(let x=18;x<36;x++)tempPixels+=bit(a.buf,x,y);
+assert(tempPixels>8,'compact tiny temperature missing after swap');
+for(let y=8;y<=9;y++)for(let x=18;x<36;x++)
   assert(bit(a.buf,x,y)===0,`old large temperature residue at ${x},${y}`);
-// 电池框固定在温度右侧：正常 25°C 场景从 x=18 开始。
-for(const [x,y] of [[18,2],[29,2],[18,7],[29,7],[30,4]])
-  assert(bit(a.buf,x,y)===1,`left battery pixel missing at ${x},${y}`);
+// 电池位于最左侧并整体上移 1 px：框 y=1..6，端子位于 x=13, y=3..4。
+for(const [x,y] of [[1,1],[12,1],[1,6],[12,6],[13,3],[13,4]])
+  assert(bit(a.buf,x,y)===1,`swapped battery pixel missing at ${x},${y}`);
 // 灯光、振动原位置必须为空；声音状态移到最右侧单独显示。
 for(let y=0;y<10;y++)for(let x=88;x<112;x++)
   assert(bit(a.buf,x,y)===0,`removed light/vibration icon residue at ${x},${y}`);
