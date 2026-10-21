@@ -35,7 +35,7 @@ assert(a.buf.length===1024,'compact framebuffer must be 1024 bytes');
 assert(/^[0-9a-f]{8}$/.test(a.crc),'compact CRC missing');
 
 // 1) 原 Production 分割线仍应全部移除。
-for(const [x,y] of [[0,10],[51,10],[73,9],[91,11],[127,30],[127,46],[22,46]])
+for(const [x,y] of [[0,10],[51,10],[73,9],[91,11],[127,30],[127,46],[18,46]])
   assert(bit(a.buf,x,y)===0,`divider pixel still present at ${x},${y}`);
 
 // 2) Home 图标所在中间标题栏区域保持空白。
@@ -60,25 +60,31 @@ assert(compact(alarm).crc===a.crc,'alarm status/face still affects compact UI');
 assert(compact(usb).crc===a.crc,'USB status still affects compact UI');
 assert(compact(other).crc===a.crc,'CPS/CPM/RH still affect compact UI');
 
-// 6) Dose 本身必须改变大号数字和量程进度。
+// 6) 剂量率本身必须改变大号数字和量程进度。
 const dose=clone();dose.m.dose=1234;
 assert(compact(dose).crc!==a.crc,'dose value does not affect compact UI');
 
-// 7) 最终窄阶梯量程条：18/16/14/12/10/8/6/4 px。
-// 顶层 18 px: x=3..20；底层 4 px: x=3..6。
+// 7) 更窄的阶梯量程条：14/12/10/9/8/6/5/3 px。
+// 顶层 14 px: x=3..16；底层 3 px: x=3..5。
 assert(bit(a.buf,3,27)===1,'range gauge first level start missing');
-assert(bit(a.buf,20,27)===1,'range gauge first level end missing');
-assert(bit(a.buf,21,27)===0,'range gauge first level too wide');
+assert(bit(a.buf,16,27)===1,'range gauge first level end missing');
+assert(bit(a.buf,17,27)===0,'range gauge first level too wide');
 assert(bit(a.buf,3,55)===1,'range gauge last level start missing');
-assert(bit(a.buf,6,55)===1,'range gauge last level end missing');
-assert(bit(a.buf,7,55)===0,'range gauge last level too wide');
+assert(bit(a.buf,5,55)===1,'range gauge last level end missing');
+assert(bit(a.buf,6,55)===0,'range gauge last level too wide');
 
 // 0.08 uSv/h 在 1 uSv/h 自动量程中只激活最底一级：底层 2 px，上一层仍 1 px。
 assert(bit(a.buf,3,56)===1,'active bottom range level not highlighted');
 assert(bit(a.buf,3,52)===0,'inactive range level unexpectedly highlighted');
 
-// 8) Dose 位于右上；左上原 Dose 区域保持空白，量程条从 y=27 才开始。
-for(let y=13;y<=20;y++)for(let x=0;x<24;x++)
-  assert(bit(a.buf,x,y)===0,`left-top Dose residue at ${x},${y}`);
+// 8) Dose 已完全移除：原右上 Dose 文本区域必须保持空白。
+for(let y=12;y<=19;y++)for(let x=88;x<128;x++)
+  assert(bit(a.buf,x,y)===0,`Dose residue at ${x},${y}`);
+
+// 9) 主读数已上移：其 32 px 字形顶部应从约 y=20 开始，而 y=19 仍为空。
+for(let x=24;x<104;x++)assert(bit(a.buf,x,19)===0,`main value unexpectedly reaches y=19 at x=${x}`);
+let valuePixelsAt20=0;
+for(let x=16;x<112;x++)valuePixelsAt20+=bit(a.buf,x,20);
+assert(valuePixelsAt20>0,'main value did not move up to y=20');
 
 console.log(JSON.stringify({compact:a.crc,changedTemp:compact(changedTemp).crc,changedDose:compact(dose).crc},null,2));
