@@ -69,27 +69,31 @@ assert(doseFrame.crc!==a.crc,'dose value does not affect compact UI');
 for(const [x,y] of [[3,24],[16,24],[3,28],[3,40],[3,52]])
   assert(bit(a.buf,x,y)===0,`old stair gauge residue at ${x},${y}`);
 
-// 8) 底部对数量级横条位于 y=55，范围端点 x=8 与 x=119。
-assert(bit(a.buf,8,55)===1,'log range bar left endpoint missing');
-assert(bit(a.buf,119,55)===1,'log range bar right endpoint missing');
+// 8) 底部对数量级横条位于 y=60，范围端点 x=8 与 x=119。
+assert(bit(a.buf,8,60)===1,'log range bar left endpoint missing');
+assert(bit(a.buf,119,60)===1,'log range bar right endpoint missing');
 
 // decade 刻度：0.1u / 1u / 10u / 100u / 1m / 10m / 100m。
 for(const x of [8,27,45,64,82,101,119])
-  assert(bit(a.buf,x,54)===1,`decade tick missing at x=${x}`);
+  assert(bit(a.buf,x,58)===1,`decade tick missing at x=${x}`);
 
-// 0.08 uSv/h 低于量程下限 0.1 uSv/h，指针应钳位在最左端。
-assert(bit(a.buf,8,51)===1,'left-clamped log pointer apex missing');
-assert(bit(a.buf,6,53)===1&&bit(a.buf,10,53)===1,'left-clamped log pointer base missing');
+// 0.08 uSv/h 低于量程下限，指针应在横线下方并钳位到最左端。
+assert(bit(a.buf,6,61)===1&&bit(a.buf,10,61)===1,'left-clamped log pointer top missing');
+assert(bit(a.buf,8,63)===1,'left-clamped log pointer apex missing');
 
-// 2.06 uSv/h 应位于 1u 与 10u 两个 decade 之间，约 x=32。
+// 2.06 uSv/h 应位于 1u 与 10u 两个 decade 之间，约 x=32；指针尖端在 y=63。
 let pointerFound=false;
-for(let x=30;x<=35;x++)pointerFound=pointerFound||bit(doseFrame.buf,x,51)===1;
+for(let x=30;x<=35;x++)pointerFound=pointerFound||bit(doseFrame.buf,x,63)===1;
 assert(pointerFound,'2.06 uSv/h log pointer is not in expected decade position');
 
-// 9) 标签改用 HAXRCORP 并收进屏幕：最底 y=63 应保持空白，不再发生裁切。
-for(let x=0;x<128;x++)assert(bit(a.buf,x,63)===0,`bottom label clipping at x=${x}`);
-// 单位结束于 y=50，量级指针从 y=51 开始；基准低量程下右侧不应发生重叠。
-for(let x=90;x<128;x++)assert(bit(a.buf,x,51)===0,`unit/log pointer vertical overlap at x=${x}`);
+// 9) 量程标签采用 3×5 微型点阵，位于横线上方 y=52..56；主单位与标签间保留空行。
+let tinyLabelPixels=0;
+for(let y=52;y<=56;y++)for(let x=0;x<128;x++)tinyLabelPixels+=bit(a.buf,x,y);
+assert(tinyLabelPixels>10,'tiny log-range labels are missing');
+for(let x=90;x<128;x++){
+  assert(bit(a.buf,x,50)===0,`unit/log-label spacing lost at x=${x},y=50`);
+  assert(bit(a.buf,x,51)===0,`unit/log-label spacing lost at x=${x},y=51`);
+}
 
 // 10) Dose 已完全移除：原右上 Dose 文本区域必须保持空白。
 for(let y=12;y<=19;y++)for(let x=108;x<128;x++)
