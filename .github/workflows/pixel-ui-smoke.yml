@@ -7,10 +7,12 @@ on:
       - 'grs-production-ui.js'
       - 'ui-preview.js'
       - 'ui-label-5x7.js'
+      - 'ui-redesign-v3.js'
       - 'ui-resource/**'
       - 'tests/pixel-ui-smoke.js'
       - 'tests/ui-preview-smoke.js'
       - 'tests/ui-label-5x7-smoke.js'
+      - 'tests/ui-redesign-v3-smoke.js'
       - '.github/workflows/pixel-ui-smoke.yml'
   workflow_dispatch:
 
@@ -30,6 +32,7 @@ jobs:
           node --check grs-production-ui.js
           node --check ui-preview.js
           node --check ui-label-5x7.js
+          node --check ui-redesign-v3.js
           node --check app.js
       - name: Render Production frames without browser fonts
         run: node tests/pixel-ui-smoke.js
@@ -37,3 +40,5 @@ jobs:
         run: node tests/ui-preview-smoke.js
       - name: Verify U8g2 5x7 Dose Rate label
         run: node tests/ui-label-5x7-smoke.js
+      - name: Verify UI V3 boundaries and layouts
+        run: node tests/ui-redesign-v3-smoke.js
