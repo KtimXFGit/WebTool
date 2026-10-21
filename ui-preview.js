@@ -26,7 +26,6 @@ function drawCompactTemperature(l,m){
   const text=valid?String(clamp(Math.round(Number(m.temp)),-99,199)):'--';
   l.text(1,9,FACE.HAX,text);
   const degreeX=1+l.width(FACE.HAX,text)+1;
-  // 3×3 像素温度度数符号；C 使用 HAXRCORP 大写字形。
   l.pixel(degreeX+1,1);
   l.pixel(degreeX,2);
   l.pixel(degreeX+2,2);
@@ -52,23 +51,43 @@ function compactHeader(l,m,s){
   for(let bar=0;bar<level;bar++)l.box(115+bar*3,4,2,2);
 }
 
+// 当前 Production 资源中最小正式文本 face 是 HAXRCORP 5x7。
+// 对数量程标签仅需要数字、'.'、u/m，因此单独使用 3x5 1-bit 微型字模，
+// 在 128x64 上可为主单位、刻度和指针留出清晰间距。
+const TINY3X5={
+  '0':['111','101','101','101','111'],
+  '1':['010','110','010','010','111'],
+  '2':['111','001','111','100','111'],
+  '3':['111','001','111','001','111'],
+  '4':['101','101','111','001','001'],
+  '5':['111','100','111','001','111'],
+  '6':['111','100','111','101','111'],
+  '7':['111','001','010','010','010'],
+  '8':['111','101','111','101','111'],
+  '9':['111','101','111','001','111'],
+  'u':['101','101','101','101','111'],
+  'm':['101','111','111','101','101'],
+  '.':['000','000','000','000','010']
+};
+function tinyWidth(text){return Math.max(0,String(text).length*4-1);}
+function tinyText(l,x,y,text){
+  let px=x;
+  for(const ch of String(text)){
+    const rows=TINY3X5[ch]||TINY3X5['0'];
+    for(let yy=0;yy<5;yy++)for(let xx=0;xx<3;xx++)if(rows[yy][xx]==='1')l.pixel(px+xx,y+yy);
+    px+=4;
+  }
+}
+
 function drawLogRangeBar(l,doseCenti){
-  // 辐射剂量率跨多个数量级，底部量级条采用 log10 映射。
-  // 范围：0.1 uSv/h ～ 100 mSv/h（100000 uSv/h），共 6 个 decade。
-  // 128×64 下只标四个关键标签，所有 decade 仍保留短刻度。
+  // 范围：0.1 uSv/h ～ 100 mSv/h，共 6 个 decade。
+  // 标签在线上方，当前位置三角指针在线下方。
   const x1=8;
   const x2=119;
-  const y=55;
+  const y=60;
   const minLog=-1;
   const maxLog=5;
   const doseUSv=Math.max(0.1,(Math.max(0,Number(doseCenti)||0))/100);
-
-  l.hline(x1,y,x2-x1+1);
-  for(let decade=minLog;decade<=maxLog;decade++){
-    const ratio=(decade-minLog)/(maxLog-minLog);
-    const x=x1+Math.round((x2-x1)*ratio);
-    l.vline(x,y-2,3);
-  }
 
   const labels=[
     {decade:-1,text:'.1u'},
@@ -79,18 +98,24 @@ function drawLogRangeBar(l,doseCenti){
   for(const item of labels){
     const ratio=(item.decade-minLog)/(maxLog-minLog);
     const center=x1+Math.round((x2-x1)*ratio);
-    const width=l.width(FACE.HAX,item.text);
+    const width=tinyWidth(item.text);
     const x=clamp(center-trunc(width/2),0,127-width);
-    l.text(x,63,FACE.HAX,item.text);
+    tinyText(l,x,52,item.text);
   }
 
-  // 当前剂量率位置指针：小实心三角形，位于量级横线上方。
+  l.hline(x1,y,x2-x1+1);
+  for(let decade=minLog;decade<=maxLog;decade++){
+    const ratio=(decade-minLog)/(maxLog-minLog);
+    const x=x1+Math.round((x2-x1)*ratio);
+    l.vline(x,y-2,3);
+  }
+
   const valueLog=Math.log10(doseUSv);
   const valueRatio=clamp((valueLog-minLog)/(maxLog-minLog),0,1);
   const px=x1+Math.round((x2-x1)*valueRatio);
-  l.pixel(px,51);
-  l.hline(px-1,52,3);
-  l.hline(px-2,53,5);
+  l.hline(px-2,61,5);
+  l.hline(px-1,62,3);
+  l.pixel(px,63);
 }
 
 function drawHold(l,s){
@@ -107,15 +132,13 @@ function renderCompact(state,canvas){
   if(u.page!=='monitor'||u.mode!=='rate')return originalRender(state,canvas);
   compactHeader(l,m,s);
 
-  // 精简版：顶部保留整数温度与状态图标；主剂量率居中上移；
-  // 底部使用对数量级条和当前位置指针，不再使用左侧阶梯量程图。
   const rate=UI.formatDoseRate(m.dose);
   const valueWidth=l.width(PREVIEW_FACE_LOGISOSO32,rate.value);
   const valueX=Math.max(10,trunc((128-valueWidth)/2));
   l.text(valueX,42,PREVIEW_FACE_LOGISOSO32,rate.value);
 
   const unitWidth=l.width(FACE.LATIN,rate.unit);
-  l.text(Math.max(0,126-unitWidth),43,FACE.LATIN,rate.unit);
+  l.text(Math.max(0,126-unitWidth),42,FACE.LATIN,rate.unit);
   drawLogRangeBar(l,m.dose);
 
   if(Date.now()<(u.hint||0))drawHold(l,s);
@@ -183,7 +206,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简主界面采用整数温度、顶部状态图标、居中大号 U8g2 剂量率，以及主读数下方、标签位于刻度线上方的 0.1 uSv/h～100 mSv/h 对数量级条与当前位置三角指针；左侧阶梯量程条和 Dose 文本已移除。Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简主界面采用整数温度、顶部状态图标、居中大号 U8g2 剂量率，以及主读数下方的 0.1 uSv/h～100 mSv/h 对数量级条；量程标签使用 3×5 单色微型点阵置于横线上方，当前位置三角指针置于横线下方。左侧阶梯量程条和 Dose 文本已移除。Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
