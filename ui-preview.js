@@ -61,8 +61,9 @@ function activeRangeCenti(doseCenti){
 
 function drawRangeBar(l,doseCenti){
   // 更克制的 8 级阶梯量程条：最长 14 px，仅作为辅助信息。
+  // 相比上一版整体上移 3 px，让量程提示与主读数的垂直重心更协调。
   const x=3;
-  const y0=27;
+  const y0=24;
   const gap=4;
   const widths=[14,12,10,9,8,6,5,3];
   const range=activeRangeCenti(doseCenti);
@@ -92,7 +93,7 @@ function renderCompact(state,canvas){
   compactHeader(l,m,s);
 
   // 精简版：顶部只保留整数温度与状态图标；去掉 Dose 文本。
-  // 左侧采用 14 px 最大宽度阶梯量程条；主剂量率按整屏中心排版并上移。
+  // 左侧采用上移后的 14 px 最大宽度阶梯量程条；主剂量率按整屏中心排版并上移。
   drawRangeBar(l,m.dose);
 
   const rate=UI.formatDoseRate(m.dose);
@@ -167,7 +168,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简主界面采用整数温度、顶部状态图标、14/12/10/9/8/6/5/3 px 的 8 级阶梯量程条、上移并按整屏 x≈64 居中的大号 U8g2 剂量率和右下角单位；Dose 文本已移除。Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简主界面采用整数温度、顶部状态图标、整体上移 3 px 的 14/12/10/9/8/6/5/3 px 八级阶梯量程条、上移并按整屏 x≈64 居中的大号 U8g2 剂量率和右下角单位；Dose 文本已移除。Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
