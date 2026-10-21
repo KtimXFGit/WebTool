@@ -52,30 +52,45 @@ function compactHeader(l,m,s){
   for(let bar=0;bar<level;bar++)l.box(115+bar*3,4,2,2);
 }
 
-function activeRangeCenti(doseCenti){
-  const value=Math.max(0,Number(doseCenti)||0);
-  const ranges=[100,1000,10000,100000,1000000,10000000];
-  for(const range of ranges)if(value<=range)return range;
-  return ranges[ranges.length-1];
-}
+function drawLogRangeBar(l,doseCenti){
+  // 辐射剂量率跨多个数量级，底部量级条采用 log10 映射。
+  // 范围：0.1 uSv/h ～ 100 mSv/h（100000 uSv/h），共 6 个 decade。
+  // 128×64 下只标四个关键标签，所有 decade 仍保留短刻度。
+  const x1=8;
+  const x2=119;
+  const y=55;
+  const minLog=-1;
+  const maxLog=5;
+  const doseUSv=Math.max(0.1,(Math.max(0,Number(doseCenti)||0))/100);
 
-function drawRangeBar(l,doseCenti){
-  // 更克制的 8 级阶梯量程条：最长 14 px，仅作为辅助信息。
-  // 相比上一版整体上移 3 px，让量程提示与主读数的垂直重心更协调。
-  const x=3;
-  const y0=24;
-  const gap=4;
-  const widths=[14,12,10,9,8,6,5,3];
-  const range=activeRangeCenti(doseCenti);
-  const ratio=clamp((Math.max(0,Number(doseCenti)||0))/range,0,1);
-  const activeCount=ratio>0?Math.max(1,Math.ceil(widths.length*ratio)):0;
-
-  for(let i=0;i<widths.length;i++){
-    const y=y0+i*gap;
-    l.hline(x,y,widths[i]);
-    // 量程进度由下向上高亮；在单色屏上用 2 px 厚度区分激活级。
-    if(i>=widths.length-activeCount)l.hline(x,y+1,widths[i]);
+  l.hline(x1,y,x2-x1+1);
+  for(let decade=minLog;decade<=maxLog;decade++){
+    const ratio=(decade-minLog)/(maxLog-minLog);
+    const x=x1+Math.round((x2-x1)*ratio);
+    l.vline(x,y-1,3);
   }
+
+  const labels=[
+    {decade:-1,text:'.1u'},
+    {decade:1,text:'10u'},
+    {decade:3,text:'1m'},
+    {decade:5,text:'100m'}
+  ];
+  for(const item of labels){
+    const ratio=(item.decade-minLog)/(maxLog-minLog);
+    const center=x1+Math.round((x2-x1)*ratio);
+    const width=l.width(FACE.LATIN,item.text);
+    const x=clamp(center-trunc(width/2),0,127-width);
+    l.text(x,63,FACE.LATIN,item.text);
+  }
+
+  // 当前剂量率位置指针：小实心三角形，位于量级横线上方。
+  const valueLog=Math.log10(doseUSv);
+  const valueRatio=clamp((valueLog-minLog)/(maxLog-minLog),0,1);
+  const px=x1+Math.round((x2-x1)*valueRatio);
+  l.pixel(px,51);
+  l.hline(px-1,52,3);
+  l.hline(px-2,53,5);
 }
 
 function drawHold(l,s){
@@ -92,16 +107,16 @@ function renderCompact(state,canvas){
   if(u.page!=='monitor'||u.mode!=='rate')return originalRender(state,canvas);
   compactHeader(l,m,s);
 
-  // 精简版：顶部只保留整数温度与状态图标；去掉 Dose 文本。
-  // 左侧采用上移后的 14 px 最大宽度阶梯量程条；主剂量率按整屏中心排版并上移。
-  drawRangeBar(l,m.dose);
-
+  // 精简版：顶部保留整数温度与状态图标；主剂量率居中上移；
+  // 底部使用对数量级条和当前位置指针，不再使用左侧阶梯量程图。
   const rate=UI.formatDoseRate(m.dose);
   const valueWidth=l.width(PREVIEW_FACE_LOGISOSO32,rate.value);
-  const valueX=Math.max(16,trunc((128-valueWidth)/2));
-  l.text(valueX,52,PREVIEW_FACE_LOGISOSO32,rate.value);
-  const unitWidth=l.width(FACE.T0_11,rate.unit);
-  l.text(Math.max(22,126-unitWidth),62,FACE.T0_11,rate.unit);
+  const valueX=Math.max(10,trunc((128-valueWidth)/2));
+  l.text(valueX,42,PREVIEW_FACE_LOGISOSO32,rate.value);
+
+  const unitWidth=l.width(FACE.LATIN,rate.unit);
+  l.text(Math.max(0,126-unitWidth),49,FACE.LATIN,rate.unit);
+  drawLogRangeBar(l,m.dose);
 
   if(Date.now()<(u.hint||0))drawHold(l,s);
   l.present();
@@ -168,7 +183,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简主界面采用整数温度、顶部状态图标、整体上移 3 px 的 14/12/10/9/8/6/5/3 px 八级阶梯量程条、上移并按整屏 x≈64 居中的大号 U8g2 剂量率和右下角单位；Dose 文本已移除。Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简主界面采用整数温度、顶部状态图标、居中大号 U8g2 剂量率，以及底部 0.1 uSv/h～100 mSv/h 对数量级条与当前位置三角指针；左侧阶梯量程条和 Dose 文本已移除。Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
