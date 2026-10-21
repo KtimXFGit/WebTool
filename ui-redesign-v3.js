@@ -104,29 +104,23 @@ function logY(centi,top=4,bottom=52){const u=Math.max(.1,(Math.max(0,Number(cent
 function renderTrend(l,state){
   const {m}=state;
   const history=(Array.isArray(m.doseHistory)&&m.doseHistory.length?m.doseHistory:liveDoseHistory).slice(-60);
-  const AX=1,L=20,R=123,T=15,B=52;
+  const AX=1,L=20,R=123,T=1,B=52;
 
-  // 顶部两行参数：标签和值分栏，避免 AVG/MAX/CPS/CPM 与数字粘连。
-  microText(l,2,1,'AVG'); microText(l,22,1,shortDose(m.avg||m.dose||0));
-  microText(l,66,1,'MAX');microText(l,86,1,shortDose(m.peak||m.dose||0));
-  microText(l,2,8,'CPS'); microText(l,22,8,String(Math.max(0,Math.floor(m.cps||0))));
-  microText(l,66,8,'CPM');microText(l,86,8,String(Math.max(0,Math.floor(m.cpm||0))));
-
-  // Y 轴在左侧；刻度尺统一向右，刻度值也放在轴的右侧。
+  // 背景层：坐标轴、刻度与 60 秒剂量率条形图。
+  // 柱形允许延伸到顶部参数区域，形成真正的图表背景层。
   l.vline(AX,T,B-T+1);
-  l.hline(AX,B,R-AX+1); // X 轴延长到接近右边界。
+  l.hline(AX,B,R-AX+1);
   const majors=[[10,'.1u'],[1000,'10u'],[100000,'1m'],[10000000,'100m']];
   for(const [v,t] of majors){
     const y=logY(v,T,B);
     l.hline(AX,y,4);
-    microText(l,6,clamp(y-2,T-2,B-4),t);
+    microText(l,6,clamp(y-2,0,B-4),t);
   }
   for(let d=-1;d<=5;d++){
     const centi=Math.pow(10,d)*100,y=logY(centi,T,B);
     l.hline(AX,y,2);
   }
 
-  // 60 秒剂量率历史改为 1 px 竖向条形图。
   if(history.length){
     for(let i=0;i<history.length;i++){
       const x=L+Math.round(i*(R-L)/Math.max(1,history.length-1));
@@ -135,10 +129,19 @@ function renderTrend(l,state){
     }
   }
 
-  // X 轴保持接近 Production 原长度，0/30/60s 使用 3×5 小字。
   microText(l,L-1,58,'0');
   microText(l,69,58,'30');
   microText(l,113,58,'60s');
+
+  const frontText=(x,y,text)=>{
+    const w=microWidth(text);
+    l.box(Math.max(0,x-1),Math.max(0,y-1),Math.min(128-x+1,w+2),7,0);
+    microText(l,x,y,text);
+  };
+  frontText(30,1,'AVG'); frontText(49,1,shortDose(m.avg||m.dose||0));
+  frontText(80,1,'MAX'); frontText(99,1,shortDose(m.peak||m.dose||0));
+  frontText(30,8,'CPS'); frontText(49,8,String(Math.max(0,Math.floor(m.cps||0))));
+  frontText(80,8,'CPM'); frontText(99,8,String(Math.max(0,Math.floor(m.cpm||0))));
 }
 
 const SETTINGS_LABELS=[IDS.LANGUAGE,IDS.ALARM_THRESHOLD,IDS.BACKLIGHT_SWITCH,IDS.BACKLIGHT,IDS.AUTO_SLEEP,IDS.KEY_SOUND,IDS.KEY_VIB,IDS.GM_SOUND,IDS.ALARM_SOUND,IDS.ALARM_LIGHT,IDS.ALARM_VIB,IDS.DATE_TIME,IDS.TOTAL_DOSE,IDS.DATA,IDS.DEVICE_INFO,IDS.RESTORE,IDS.RETURN_HOME];
