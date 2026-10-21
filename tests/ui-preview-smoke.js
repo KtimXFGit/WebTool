@@ -64,27 +64,27 @@ assert(compact(other).crc===a.crc,'CPS/CPM/RH still affect compact UI');
 const dose=clone();dose.m.dose=1234;
 assert(compact(dose).crc!==a.crc,'dose value does not affect compact UI');
 
-// 7) 更窄的阶梯量程条：14/12/10/9/8/6/5/3 px。
-// 顶层 14 px: x=3..16；底层 3 px: x=3..5。
-assert(bit(a.buf,3,27)===1,'range gauge first level start missing');
-assert(bit(a.buf,16,27)===1,'range gauge first level end missing');
-assert(bit(a.buf,17,27)===0,'range gauge first level too wide');
-assert(bit(a.buf,3,55)===1,'range gauge last level start missing');
-assert(bit(a.buf,5,55)===1,'range gauge last level end missing');
-assert(bit(a.buf,6,55)===0,'range gauge last level too wide');
+// 7) 阶梯量程条整体上移 3 px：14/12/10/9/8/6/5/3 px。
+// 顶层 y=24，14 px: x=3..16；底层 y=52，3 px: x=3..5。
+assert(bit(a.buf,3,24)===1,'range gauge first level start missing');
+assert(bit(a.buf,16,24)===1,'range gauge first level end missing');
+assert(bit(a.buf,17,24)===0,'range gauge first level too wide');
+assert(bit(a.buf,3,52)===1,'range gauge last level start missing');
+assert(bit(a.buf,5,52)===1,'range gauge last level end missing');
+assert(bit(a.buf,6,52)===0,'range gauge last level too wide');
 
 // 0.08 uSv/h 在 1 uSv/h 自动量程中只激活最底一级：底层 2 px，上一层仍 1 px。
-assert(bit(a.buf,3,56)===1,'active bottom range level not highlighted');
-assert(bit(a.buf,3,52)===0,'inactive range level unexpectedly highlighted');
+assert(bit(a.buf,3,53)===1,'active bottom range level not highlighted');
+assert(bit(a.buf,3,49)===0,'inactive range level unexpectedly highlighted');
 
 // 8) Dose 已完全移除：原右上 Dose 文本区域必须保持空白。
 for(let y=12;y<=19;y++)for(let x=88;x<128;x++)
   assert(bit(a.buf,x,y)===0,`Dose residue at ${x},${y}`);
 
-// 9) 主读数已上移：其 32 px 字形顶部应从约 y=20 开始，而 y=19 仍为空。
+// 9) 主读数保持上移后的布局：其 32 px 字形顶部应从约 y=20 开始，而 y=19 仍为空。
 for(let x=24;x<104;x++)assert(bit(a.buf,x,19)===0,`main value unexpectedly reaches y=19 at x=${x}`);
 let valuePixelsAt20=0;
 for(let x=16;x<112;x++)valuePixelsAt20+=bit(a.buf,x,20);
-assert(valuePixelsAt20>0,'main value did not move up to y=20');
+assert(valuePixelsAt20>0,'main value did not remain at y=20');
 
 console.log(JSON.stringify({compact:a.crc,changedTemp:compact(changedTemp).crc,changedDose:compact(dose).crc},null,2));
