@@ -104,35 +104,46 @@ function logY(centi,top=4,bottom=52){const u=Math.max(.1,(Math.max(0,Number(cent
 function renderTrend(l,state){
   const {m}=state;
   const history=(Array.isArray(m.doseHistory)&&m.doseHistory.length?m.doseHistory:liveDoseHistory).slice(-60);
-  const AX=1,L=20,R=123,T=1,B=52;
+  const AX=1,L=22,R=124,T=1,B=50;
 
-  // 背景层：坐标轴、刻度与 60 秒剂量率条形图。
-  // 柱形允许延伸到顶部参数区域，形成真正的图表背景层。
+  // 背景层：Y 轴刻度向右；X 轴刻度向下；历史采用更宽的实心柱块。
   l.vline(AX,T,B-T+1);
   l.hline(AX,B,R-AX+1);
   const majors=[[10,'.1u'],[1000,'10u'],[100000,'1m'],[10000000,'100m']];
   for(const [v,t] of majors){
     const y=logY(v,T,B);
-    l.hline(AX,y,4);
-    microText(l,6,clamp(y-2,0,B-4),t);
+    l.hline(AX,y,5);
+    // 标签位于 Y 轴右侧；底部 .1u 上移，避免与 X 轴重叠。
+    microText(l,6,clamp(y-5,0,B-6),t);
   }
   for(let d=-1;d<=5;d++){
     const centi=Math.pow(10,d)*100,y=logY(centi,T,B);
-    l.hline(AX,y,2);
+    l.hline(AX,y,3);
   }
 
+  // 60 秒数据压缩为 30 个 2 秒柱块，使用区间最大值保留瞬时峰值。
+  // 每个柱块宽 3 px，明显区别于此前的 1 px 细线。
   if(history.length){
-    for(let i=0;i<history.length;i++){
-      const x=L+Math.round(i*(R-L)/Math.max(1,history.length-1));
-      const y=clamp(logY(history[i],T,B),T,B);
-      l.vline(x,y,B-y+1);
+    const BUCKETS=Math.min(30,history.length),BAR_W=3;
+    for(let b=0;b<BUCKETS;b++){
+      const i0=Math.floor(b*history.length/BUCKETS);
+      const i1=Math.max(i0+1,Math.floor((b+1)*history.length/BUCKETS));
+      let peak=0;
+      for(let i=i0;i<i1&&i<history.length;i++)peak=Math.max(peak,Number(history[i])||0);
+      const x=L+Math.round(b*(R-L-BAR_W+1)/Math.max(1,BUCKETS-1));
+      const y=clamp(logY(peak,T,B),T,B);
+      l.box(x,y,BAR_W,B-y+1);
     }
   }
 
-  microText(l,L-1,58,'0');
-  microText(l,69,58,'30');
-  microText(l,113,58,'60s');
+  // X 轴主刻度向下伸，标签位于刻度下方。
+  const x0=L,x30=Math.round((L+R)/2),x60=R;
+  l.vline(x0,B,4);l.vline(x30,B,4);l.vline(x60,B,4);
+  microText(l,x0-1,58,'0');
+  microText(l,x30-trunc(microWidth('30')/2),58,'30');
+  microText(l,x60-microWidth('60s')+1,58,'60s');
 
+  // 前景层：参数最后绘制，局部清除文字区域，确保高柱进入参数区时文字仍清楚。
   const frontText=(x,y,text)=>{
     const w=microWidth(text);
     l.box(Math.max(0,x-1),Math.max(0,y-1),Math.min(128-x+1,w+2),7,0);
