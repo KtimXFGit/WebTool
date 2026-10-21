@@ -49,7 +49,7 @@ function tinyText(l,x,y,text){
   }
 }
 
-function drawCompactTemperature(l,m,x=18){
+function drawCompactTemperature(l,m,x=1){
   const valid=m.env&&Number.isFinite(Number(m.temp));
   const text=valid?String(clamp(Math.round(Number(m.temp)),-99,199)):'--';
   const y=2;
@@ -61,33 +61,59 @@ function drawCompactTemperature(l,m,x=18){
   tinyText(l,degreeX+3,y,'C');
   return degreeX+6;
 }
-function drawCompactSound(l,muted){
-  // 6×6 单色声音图标：比 Production 的 8×8 图标更轻，保持整像素锐利。
-  const x=120,y=1;
-  const rows=[
+function drawMiniBitmap(l,x,y,rows){
+  for(let yy=0;yy<rows.length;yy++)for(let xx=0;xx<rows[yy].length;xx++)if(rows[yy][xx]==='1')l.pixel(x+xx,y+yy);
+}
+function drawCompactSound(l,x,muted){
+  // 6×6 单色声音图标，保持整像素锐利。
+  drawMiniBitmap(l,x,1,[
     '001000',
     '011010',
     '111001',
     '111001',
     '011010',
     '001000'
-  ];
-  for(let yy=0;yy<6;yy++)for(let xx=0;xx<6;xx++)if(rows[yy][xx]==='1')l.pixel(x+xx,y+yy);
-  // 静音时在图标内部加斜杠，不增加外部占用尺寸。
-  if(muted)l.line(x+1,y,x+5,y+5);
+  ]);
+  if(muted)l.line(x+1,1,x+5,6);
+}
+function drawCompactLight(l,x){
+  // 6×6 小号灯光图标：中心灯珠 + 上下左右光线。
+  drawMiniBitmap(l,x,1,[
+    '001000',
+    '100010',
+    '011100',
+    '011100',
+    '100010',
+    '001000'
+  ]);
+}
+function drawCompactVibration(l,x){
+  // 6×6 小号振动图标：中部机身 + 两侧振动波纹。
+  drawMiniBitmap(l,x,1,[
+    '100001',
+    '010010',
+    '011110',
+    '011110',
+    '010010',
+    '100001'
+  ]);
+}
+function drawCompactBattery(l,m,x=114){
+  // 电池移到右侧，保持 12×6 主轮廓并与 6×6 状态图标对齐。
+  const y=1;
+  l.frame(x,y,12,6);
+  l.pixel(x+12,y+2);l.pixel(x+12,y+3);
+  const level=clamp(m.battLevel??0,0,3);
+  for(let bar=0;bar<level;bar++)l.box(x+2+bar*3,y+2,2,2);
 }
 
 function compactHeader(l,m,s){
-  // 左上状态组改为“电池 → 温度”。电池整体较上一版上移 1 px。
-  const batteryX=1,batteryY=1;
-  l.frame(batteryX,batteryY,12,6);
-  l.pixel(batteryX+12,batteryY+2);l.pixel(batteryX+12,batteryY+3);
-  const level=clamp(m.battLevel??0,0,3);
-  for(let bar=0;bar<level;bar++)l.box(batteryX+2+bar*3,batteryY+2,2,2);
-  drawCompactTemperature(l,m,18);
-
-  // 顶部仅保留 6×6 小号声音状态；灯光、振动图标从精简主界面移除。
-  if(s.alarmSound)drawCompactSound(l,m.muted);
+  // 左侧仅保留小号温度；右侧依次为声音、灯光、振动、电池。
+  drawCompactTemperature(l,m,1);
+  if(s.alarmSound)drawCompactSound(l,86,m.muted);
+  if(s.alarmLight)drawCompactLight(l,95);
+  if(s.alarmVib)drawCompactVibration(l,104);
+  drawCompactBattery(l,m,114);
 }
 // 当前 Production 资源中最小正式文本 face 是 HAXRCORP 5×7。
 // 精简页为顶部温度和量程标签复用 3×5 1-bit 微型字模，以降低状态栏视觉重量。
@@ -220,7 +246,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简主界面左上采用“电池 → 3×5 小号整数温度”排列，电池整体上移 1 px；顶部仅保留 6×6 小号声音状态，灯光和振动图标已移除。主区继续使用居中大号 U8g2 剂量率，下方为 0.1 uSv/h～100 mSv/h 对数量级条，标签在线上方、三角指针在线下方。Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简主界面左上仅保留 3×5 小号整数温度；右上依次显示 6×6 小号声音、灯光、振动状态，并将电池图标移到最右侧。主区继续使用居中大号 U8g2 剂量率，下方为 0.1 uSv/h～100 mSv/h 对数量级条，标签在线上方、三角指针在线下方。Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
