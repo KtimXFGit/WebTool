@@ -34,8 +34,8 @@ const a=compact(normal);
 assert(a.buf.length===1024,'compact framebuffer must be 1024 bytes');
 assert(/^[0-9a-f]{8}$/.test(a.crc),'compact CRC missing');
 
-// 1) 原 Production 分割线仍应全部移除。
-for(const [x,y] of [[0,10],[51,10],[73,9],[91,11],[127,30],[127,46]])
+// 1) 原 Production 的主要分割线仍应移除；避开新主数字实际占用区域。
+for(const [x,y] of [[0,10],[73,9],[127,30],[127,46]])
   assert(bit(a.buf,x,y)===0,`divider pixel still present at ${x},${y}`);
 
 // 2) Home 图标所在中间标题栏区域保持空白。
@@ -89,10 +89,10 @@ for(let x=30;x<=35;x++)pointerFound=pointerFound||bit(doseFrame.buf,x,51)===1;
 assert(pointerFound,'2.06 uSv/h log pointer is not in expected decade position');
 
 // 9) Dose 已完全移除：原右上 Dose 文本区域必须保持空白。
-for(let y=12;y<=19;y++)for(let x=88;x<128;x++)
+for(let y=12;y<=19;y++)for(let x=108;x<128;x++)
   assert(bit(a.buf,x,y)===0,`Dose residue at ${x},${y}`);
 
-// 10) 主读数为底部量级条让位后上移，中心区域应在 y=10..42 内有像素。
+// 10) 主读数为底部量级条让位后上移，中心区域应在 y=10..42 内有足够像素。
 let mainPixels=0;
 for(let y=10;y<=42;y++)for(let x=18;x<110;x++)mainPixels+=bit(a.buf,x,y);
 assert(mainPixels>30,'main value missing after log-range layout change');
