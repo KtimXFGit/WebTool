@@ -113,11 +113,14 @@ for(let y=8;y<=9;y++)for(let x=18;x<36;x++)
 // 电池位于最左侧并整体上移 1 px：框 y=1..6，端子位于 x=13, y=3..4。
 for(const [x,y] of [[1,1],[12,1],[1,6],[12,6],[13,3],[13,4]])
   assert(bit(a.buf,x,y)===1,`swapped battery pixel missing at ${x},${y}`);
-// 灯光、振动原位置必须为空；声音状态移到最右侧单独显示。
+// 灯光、振动原位置必须为空；声音状态使用右上角 6×6 小图标。
 for(let y=0;y<10;y++)for(let x=88;x<112;x++)
   assert(bit(a.buf,x,y)===0,`removed light/vibration icon residue at ${x},${y}`);
+// 原 8×8 声音图标左侧区域应清空，新图标仅占 x=120..125、y=1..6。
+for(let y=0;y<10;y++)for(let x=114;x<120;x++)
+  assert(bit(a.buf,x,y)===0,`old large sound icon residue at ${x},${y}`);
 let soundPixels=0;
-for(let y=0;y<10;y++)for(let x=114;x<128;x++)soundPixels+=bit(a.buf,x,y);
-assert(soundPixels>4,'right-side sound icon missing');
+for(let y=1;y<=6;y++)for(let x=120;x<=125;x++)soundPixels+=bit(a.buf,x,y);
+assert(soundPixels>=10&&soundPixels<=22,'compact 6x6 sound icon pixel count unexpected');
 
 console.log(JSON.stringify({compact:a.crc,changedTemp:compact(changedTemp).crc,dose206:doseFrame.crc},null,2));
