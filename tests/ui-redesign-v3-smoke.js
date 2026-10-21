@@ -26,6 +26,7 @@ const base={
 };
 function clone(x=base){const q=structuredClone(x);q.m.time=new Date(x.m.time);return q;}
 function render(s){const c=canvas(),b=Uint8Array.from(GRSProductionUI.renderRedesign(s,c));return {buf:b,crc:c.dataset.frameCrc};}
+function count(buf,x1,y1,x2,y2){let n=0;for(let y=y1;y<=y2;y++)for(let x=x1;x<=x2;x++)n+=bit(buf,x,y);return n;}
 
 const rate=render(clone());
 assert(rate.buf.length===1024,'rate framebuffer size');
@@ -33,12 +34,19 @@ let q=clone();q.m.time=new Date(2026,9,21,14,34,1);assert(render(q).crc===rate.c
 q=clone();q.m.time=new Date(2026,9,21,14,35,1);assert(render(q).crc!==rate.crc,'rate minute must change header');
 q=clone();q.m.temp=31;q.m.rh=70;assert(render(q).crc===rate.crc,'rate header must not show environment');
 for(const v of [8,160,1040,9990,99900,160000]){q=clone();q.m.dose=v;assert(render(q).buf.length===1024,`rate boundary render failed ${v}`);}
+// Dose / Rate labels were removed; the old left label zone must remain blank.
+assert(count(rate.buf,2,14,24,31)===0,'old Dose/Rate label pixels remain');
+// Custom steeper slash for uSv/h: endpoints of the 4 px-run / 7 px-rise stroke.
+assert(bit(rate.buf,114,41)===1,'custom slash lower endpoint missing');
+assert(bit(rate.buf,118,34)===1,'custom slash upper endpoint missing');
 
 let total=clone();total.u.mode='total';total.m.total=3420;const totalFrame=render(total);
 q=clone(total);q.m.time=new Date(2031,1,2,5,55,0);assert(render(q).crc===totalFrame.crc,'Total header must not show time');
 q=clone(total);q.m.temp=31;assert(render(q).crc!==totalFrame.crc,'Total temperature missing');
 q=clone(total);q.m.rh=66;assert(render(q).crc!==totalFrame.crc,'Total humidity missing');
 for(const v of [0,999,1000,999000,1000000,999000000,9999000000]){q=clone();q.u.mode='total';q.m.total=v;assert(render(q).buf.length===1024,`total boundary render failed ${v}`);}
+// Total page Dose label removed as well.
+assert(count(totalFrame.buf,2,14,24,28)===0,'old Total Dose label pixels remain');
 q=clone();q.u.mode='total';q.m.total=9999000000;const totalInfo=GRSProductionUI.formatTotal(q.m.total);assert(totalInfo.value==='9999'&&totalInfo.unit==='Sv','9999 Sv formatting');assert(GRSProductionUI.redesignDebug.totalFace(totalInfo)===GRSProductionUI.FACE.TIMR24,'9999 Sv must switch to smaller font');
 q.m.totalSec=9999*86400+23*3600+59*60;const extreme=render(q);let bottomPixels=0;for(let y=56;y<64;y++)for(let x=0;x<128;x++)bottomPixels+=bit(extreme.buf,x,y);assert(bottomPixels>30,'wide D/H/M row missing');
 
