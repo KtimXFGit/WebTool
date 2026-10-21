@@ -36,9 +36,15 @@ q=clone();q.m.temp=31;q.m.rh=70;assert(render(q).crc===rate.crc,'rate header mus
 for(const v of [8,160,1040,9990,99900,160000]){q=clone();q.m.dose=v;assert(render(q).buf.length===1024,`rate boundary render failed ${v}`);}
 // Dose / Rate labels were removed; the old left label zone must remain blank.
 assert(count(rate.buf,2,14,24,31)===0,'old Dose/Rate label pixels remain');
-// Custom steeper slash for uSv/h: endpoints of the 4 px-run / 7 px-rise stroke.
-assert(bit(rate.buf,114,41)===1,'custom slash lower endpoint missing');
-assert(bit(rate.buf,118,34)===1,'custom slash upper endpoint missing');
+// The repaired Logisoso32 '0' bitmap must contain the full 32 rows, matching other digits.
+const zeroGlyph=GRSUIFaces[8].glyphs[String('0'.codePointAt(0))];
+const zeroBytes=Uint8Array.from(Buffer.from(zeroGlyph[5],'base64'));
+assert(zeroGlyph[1]===32&&zeroBytes.length===64,'Logisoso32 zero glyph is not a full 16x32 bitmap');
+assert(zeroBytes[62]!==0||zeroBytes[63]!==0,'Logisoso32 zero bottom row is blank/truncated');
+// Rate units must use the normal font slash again, not a custom line primitive.
+const redesignSource=fs.readFileSync(path.join(root,'ui-redesign-v3.js'),'utf8');
+assert(!redesignSource.includes('function drawRateUnit'),'custom rate-unit slash helper still present');
+assert(redesignSource.includes("l.text(Math.max(0,126-uw),42,FACE.LATIN,rate.unit)"),'font-rendered rate unit missing');
 
 let total=clone();total.u.mode='total';total.m.total=3420;const totalFrame=render(total);
 q=clone(total);q.m.time=new Date(2031,1,2,5,55,0);assert(render(q).crc===totalFrame.crc,'Total header must not show time');
