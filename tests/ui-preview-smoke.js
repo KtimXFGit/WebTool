@@ -77,13 +77,13 @@ assert(bit(a.buf,119,60)===1,'log range bar right endpoint missing');
 for(const x of [8,27,45,64,82,101,119])
   assert(bit(a.buf,x,58)===1,`decade tick missing at x=${x}`);
 
-// 0.08 uSv/h 低于量程下限，指针应在横线下方并钳位到最左端。
-assert(bit(a.buf,6,61)===1&&bit(a.buf,10,61)===1,'left-clamped log pointer top missing');
-assert(bit(a.buf,8,63)===1,'left-clamped log pointer apex missing');
+// 0.08 uSv/h 低于量程下限，指针应在横线下方、尖端朝上并钳位到最左端。
+assert(bit(a.buf,8,61)===1,'left-clamped upward log pointer apex missing');
+assert(bit(a.buf,6,63)===1&&bit(a.buf,10,63)===1,'left-clamped upward log pointer base missing');
 
-// 2.06 uSv/h 应位于 1u 与 10u 两个 decade 之间，约 x=32；指针尖端在 y=63。
+// 2.06 uSv/h 应位于 1u 与 10u 两个 decade 之间，约 x=32；指针尖端在 y=61，向上指向量程线。
 let pointerFound=false;
-for(let x=30;x<=35;x++)pointerFound=pointerFound||bit(doseFrame.buf,x,63)===1;
+for(let x=30;x<=35;x++)pointerFound=pointerFound||bit(doseFrame.buf,x,61)===1;
 assert(pointerFound,'2.06 uSv/h log pointer is not in expected decade position');
 
 // 9) 量程标签采用 3×5 微型点阵，位于横线上方 y=52..56；主单位与标签间保留空行。
