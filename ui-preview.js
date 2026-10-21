@@ -21,23 +21,17 @@ function langOf(s){return s.lang==='en'?'en':'zh';}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function trunc(v){return v<0?Math.ceil(v):Math.floor(v);}
 
-function drawLowercaseC(l,x,y){
-  l.hline(x+1,y,3);
-  l.vline(x,y+1,3);
-  l.hline(x+1,y+4,3);
-}
-
 function drawCompactTemperature(l,m){
   const valid=m.env&&Number.isFinite(Number(m.temp));
   const text=valid?String(clamp(Math.round(Number(m.temp)),-99,199)):'--';
   l.text(1,9,FACE.HAX,text);
   const degreeX=1+l.width(FACE.HAX,text)+1;
-  // 3×3 像素温度度数符号，避免额外引入字体字形。
+  // 3×3 像素温度度数符号；C 使用 HAXRCORP 大写字形。
   l.pixel(degreeX+1,1);
   l.pixel(degreeX,2);
   l.pixel(degreeX+2,2);
   l.pixel(degreeX+1,3);
-  drawLowercaseC(l,degreeX+4,4);
+  l.text(degreeX+4,9,FACE.HAX,'C');
 }
 
 function compactHeader(l,m,s){
@@ -66,13 +60,14 @@ function activeRangeCenti(doseCenti){
 }
 
 function drawRangeBar(l,doseCenti){
-  const x=31,y=14,w=95,h=6;
+  // 左侧竖向量程条，填充由下向上增长，避免侵占主剂量率横向空间。
+  const x=2,y=24,w=6,h=34;
   const range=activeRangeCenti(doseCenti);
   const ratio=clamp((Math.max(0,Number(doseCenti)||0))/range,0,1);
-  const innerW=w-4;
+  const innerH=h-4;
   l.frame(x,y,w,h);
-  const fill=Math.round(innerW*ratio);
-  if(fill>0)l.box(x+2,y+2,fill,2);
+  const fill=Math.round(innerH*ratio);
+  if(fill>0)l.box(x+2,y+h-2-fill,2,fill);
 }
 
 function drawHold(l,s){
@@ -90,17 +85,21 @@ function renderCompact(state,canvas){
   const lang=langOf(s);
   compactHeader(l,m,s);
 
-  // 精简版：顶部显示整数温度；Dose 与自动量程条同一行；
-  // 大号剂量率居中；单位固定在右下角。
-  l.textId(1,19,FACE.SIX10,IDS.MAIN_DOSE,lang);
+  // 精简版：顶部左侧整数温度；Dose 右上；左侧竖向自动量程条；
+  // 大号剂量率位于剩余主显示区，单位固定右下角。
+  const doseLabel=l.string(IDS.MAIN_DOSE,lang);
+  const doseWidth=l.width(FACE.SIX10,doseLabel);
+  l.text(Math.max(10,127-doseWidth),20,FACE.SIX10,doseLabel);
   drawRangeBar(l,m.dose);
 
   const rate=UI.formatDoseRate(m.dose);
   const valueWidth=l.width(PREVIEW_FACE_LOGISOSO32,rate.value);
-  const valueX=Math.max(0,trunc((128-valueWidth)/2));
-  l.text(valueX,52,PREVIEW_FACE_LOGISOSO32,rate.value);
+  const valueLeft=10;
+  const valueArea=118;
+  const valueX=valueLeft+Math.max(0,trunc((valueArea-valueWidth)/2));
+  l.text(valueX,53,PREVIEW_FACE_LOGISOSO32,rate.value);
   const unitWidth=l.width(FACE.T0_11,rate.unit);
-  l.text(Math.max(0,127-unitWidth),63,FACE.T0_11,rate.unit);
+  l.text(Math.max(10,127-unitWidth),63,FACE.T0_11,rate.unit);
 
   if(Date.now()<(u.hint||0))drawHold(l,s);
   l.present();
@@ -167,7 +166,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简 Dose 主界面采用整数温度、Dose+自动量程进度条、大号 U8g2 剂量率和右下角单位；Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简 Dose 主界面采用整数温度、右上 Dose、左侧竖向自动量程条、大号 U8g2 剂量率和右下角单位；Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
