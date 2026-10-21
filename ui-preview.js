@@ -113,9 +113,10 @@ function drawLogRangeBar(l,doseCenti){
   const valueLog=Math.log10(doseUSv);
   const valueRatio=clamp((valueLog-minLog)/(maxLog-minLog),0,1);
   const px=x1+Math.round((x2-x1)*valueRatio);
-  l.hline(px-2,61,5);
+  // 指针位于量程线下方，尖端朝上指向当前量程位置。
+  l.pixel(px,61);
   l.hline(px-1,62,3);
-  l.pixel(px,63);
+  l.hline(px-2,63,5);
 }
 
 function drawHold(l,s){
