@@ -7,6 +7,14 @@ const {FACE,IDS}=UI;
 const MAIN_FACE=8;
 const SMALL_TOTAL_FACE=FACE.TIMR24;
 const prevRender=UI.render;
+
+// 修正精简主读数字体中的 0：原预览子集只携带了 29 行有效位图，
+// 其余数字为完整 32 行，导致 0 在 0.08 / 0.16 等值中明显偏矮。
+// 保持原 20 px advance 和 16 px glyph width，只补齐到 32 行视觉高度。
+const FIXED_ZERO_B64='B+Af+D/8f/58Pvgf+B/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/4H/gffD5//j/8H/gH4A==';
+if(window.GRSUIFaces?.[MAIN_FACE]?.glyphs?.['48']){
+  window.GRSUIFaces[MAIN_FACE].glyphs['48']=[16,32,20,2,-32,FIXED_ZERO_B64];
+}
 let testSelect=null;
 let lastBaseState=null;
 const liveDoseHistory=[];
@@ -71,16 +79,6 @@ function drawEnvHeader(l,m,s){
 
 function drawHold(l,s){const lang=s.lang==='en'?'en':'zh',face=lang==='en'?FACE.LATIN:FACE.BODY,text=l.string(IDS.HOLD,lang),w=l.width(face,text),bw=Math.min(124,w+8),x=trunc((128-bw)/2);l.box(x,23,bw,19,0);l.frame(x,23,bw,19);l.centerText(x,bw,face===FACE.BODY?26:29,face,text);}
 function mainValueX(l,face,value,left=28,right=126){const w=l.width(face,value);return left+Math.max(0,trunc((right-left+1-w)/2));}
-function drawRateUnit(l,right,baseline,unit){
-  const parts=String(unit).split('/');
-  if(parts.length!==2){const w=l.width(FACE.LATIN,unit);l.text(Math.max(0,right-w),baseline,FACE.LATIN,unit);return;}
-  const leftText=parts[0],rightText=parts[1],leftW=l.width(FACE.LATIN,leftText),rightW=l.width(FACE.LATIN,rightText);
-  // 6 px 自定义斜杠单元：保持 8 px 高度，但将水平跨度增至 4 px，让“/”更明显地倾斜。
-  const slashW=6,totalW=leftW+slashW+rightW,x=Math.max(0,right-totalW);
-  l.text(x,baseline,FACE.LATIN,leftText);
-  const sx=x+leftW;l.line(sx,baseline-1,sx+4,baseline-8);
-  l.text(sx+slashW,baseline,FACE.LATIN,rightText);
-}
 function drawLogRangeBar(l,doseCenti){
   const x1=8,x2=119,y=60,minLog=-1,maxLog=5;
   const labels=[[-1,'.1u'],[1,'10u'],[3,'1m'],[5,'100m']];
@@ -91,7 +89,7 @@ function drawLogRangeBar(l,doseCenti){
 function renderRate(l,state){
   const {m,s,u}=state;drawTimeHeader(l,m,s);
   const rate=UI.formatDoseRate(m.dose);const x=trunc((128-l.width(MAIN_FACE,rate.value))/2);l.text(x,42,MAIN_FACE,rate.value);
-  drawRateUnit(l,126,42,rate.unit);drawLogRangeBar(l,m.dose);if(Date.now()<(u.hint||0))drawHold(l,s);
+  const uw=l.width(FACE.LATIN,rate.unit);l.text(Math.max(0,126-uw),42,FACE.LATIN,rate.unit);drawLogRangeBar(l,m.dose);if(Date.now()<(u.hint||0))drawHold(l,s);
 }
 function totalFace(total){return total.unit==='Sv'&&Number(total.value)>=9999?SMALL_TOTAL_FACE:MAIN_FACE;}
 function renderTotal(l,state){
@@ -148,6 +146,6 @@ UI.render=function(state,canvas){
   lastBaseState=state;sampleLive(state);const key=testSelect?.value||'auto',effective=applyTest(state,key),mode=currentMode();const prior=prevRender(effective,canvas);if(mode==='production'){syncCompare(effective,canvas,mode);return prior;}const out=renderRedesign(effective,canvas);syncCompare(effective,canvas,mode);const st=document.getElementById('uiStateText');if(st&&key!=='auto')st.textContent=`显示测试：${TESTS.find(x=>x[0]===key)?.[1]||key}`;return out;
 };
 
-function installTestUI(){const controls=document.querySelector('.simulator-card .inline-controls');if(!controls||document.getElementById('displayTest'))return;const group=document.createElement('span');group.className='ui-preview-control display-test-control';const label=document.createElement('label');label.htmlFor='displayTest';label.textContent='显示测试';testSelect=document.createElement('select');testSelect.id='displayTest';for(const [v,t] of TESTS){const o=document.createElement('option');o.value=v;o.textContent=t;testSelect.appendChild(o);}const prev=document.createElement('button');prev.type='button';prev.textContent='‹';prev.title='上一个测试值';const next=document.createElement('button');next.type='button';next.textContent='›';next.title='下一个测试值';const rerender=()=>{const lcd=document.getElementById('lcd');if(lcd&&lastBaseState)UI.render(lastBaseState,lcd);};testSelect.addEventListener('change',rerender);prev.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex-1+testSelect.options.length)%testSelect.options.length;rerender();});next.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex+1)%testSelect.options.length;rerender();});group.append(label,testSelect,prev,next);controls.appendChild(group);const note=document.querySelector('.ui-preview-note');if(note)note.textContent='精简 UI V3：Dose Rate 左上显示 HH:MM，主剂量率取消 Dose / Rate 标签并按整屏居中，uSv/h 与 mSv/h 使用更陡的自绘斜杠；Total Dose 左上显示整数温度与湿度，取消 Dose 标签并按整屏居中。主数值统一固定字号与槽位，9999 Sv 自动切换小一档字体；趋势页使用剂量率对数 Y 轴并显示 Avg / Max / CPS / CPM；设置页采用同款状态栏、无分割线和轨道中置滑块。可使用“显示测试”逐项检查边界数值。';}
+function installTestUI(){const controls=document.querySelector('.simulator-card .inline-controls');if(!controls||document.getElementById('displayTest'))return;const group=document.createElement('span');group.className='ui-preview-control display-test-control';const label=document.createElement('label');label.htmlFor='displayTest';label.textContent='显示测试';testSelect=document.createElement('select');testSelect.id='displayTest';for(const [v,t] of TESTS){const o=document.createElement('option');o.value=v;o.textContent=t;testSelect.appendChild(o);}const prev=document.createElement('button');prev.type='button';prev.textContent='‹';prev.title='上一个测试值';const next=document.createElement('button');next.type='button';next.textContent='›';next.title='下一个测试值';const rerender=()=>{const lcd=document.getElementById('lcd');if(lcd&&lastBaseState)UI.render(lastBaseState,lcd);};testSelect.addEventListener('change',rerender);prev.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex-1+testSelect.options.length)%testSelect.options.length;rerender();});next.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex+1)%testSelect.options.length;rerender();});group.append(label,testSelect,prev,next);controls.appendChild(group);const note=document.querySelector('.ui-preview-note');if(note)note.textContent='精简 UI V3：Dose Rate 左上显示 HH:MM，主剂量率取消 Dose / Rate 标签并按整屏居中，uSv/h 与 mSv/h 恢复使用字体自身的斜杠；Total Dose 左上显示整数温度与湿度，取消 Dose 标签并按整屏居中。主数值统一固定字号与槽位，9999 Sv 自动切换小一档字体；趋势页使用剂量率对数 Y 轴并显示 Avg / Max / CPS / CPM；设置页采用同款状态栏、无分割线和轨道中置滑块。可使用“显示测试”逐项检查边界数值。';}
 if(typeof document!=='undefined')installTestUI();
 })();
