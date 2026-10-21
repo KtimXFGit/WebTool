@@ -35,14 +35,14 @@ assert(a.buf.length===1024,'compact framebuffer must be 1024 bytes');
 assert(/^[0-9a-f]{8}$/.test(a.crc),'compact CRC missing');
 
 // 1) 原 Production 分割线仍应全部移除。选择不会与新数字/量程条重叠的采样点。
-for(const [x,y] of [[0,10],[51,10],[73,9],[91,11],[127,20],[127,30],[28,46],[58,46],[127,46]])
+for(const [x,y] of [[0,10],[51,10],[73,9],[91,11],[127,30],[127,46],[28,46]])
   assert(bit(a.buf,x,y)===0,`divider pixel still present at ${x},${y}`);
 
 // 2) Home 图标所在中间标题栏区域保持空白。
 for(let y=0;y<10;y++)for(let x=40;x<74;x++)
   assert(bit(a.buf,x,y)===0,`home/header icon residue at ${x},${y}`);
 
-// 3) 顶部已改为温度，时间的时/分/秒变化都不应影响精简界面。
+// 3) 顶部已改为温度，时间变化不应影响精简界面。
 const timeChanged=clone();timeChanged.m.time=new Date(2030,1,2,3,4,59);
 assert(compact(timeChanged).crc===a.crc,'time unexpectedly affects compact UI');
 
@@ -64,10 +64,14 @@ assert(compact(other).crc===a.crc,'CPS/CPM/RH still affect compact UI');
 const dose=clone();dose.m.dose=1234;
 assert(compact(dose).crc!==a.crc,'dose value does not affect compact UI');
 
-// 7) 量程条位于 Dose 右侧：边框存在，低剂量时仅左侧少量填充。
-assert(bit(a.buf,31,14)===1,'range bar top-left frame missing');
-assert(bit(a.buf,125,14)===1,'range bar top-right frame missing');
-assert(bit(a.buf,34,16)===1,'range bar fill missing');
-assert(bit(a.buf,50,16)===0,'range bar fill unexpectedly too long');
+// 7) 量程条改为左侧竖条：边框存在，低剂量时仅靠底部少量填充。
+assert(bit(a.buf,2,24)===1,'vertical range bar top-left frame missing');
+assert(bit(a.buf,7,57)===1,'vertical range bar bottom-right frame missing');
+assert(bit(a.buf,4,54)===1,'vertical range bar bottom fill missing');
+assert(bit(a.buf,4,40)===0,'vertical range bar fill unexpectedly too high');
+
+// 8) Dose 已移至右上主显示区，左上原 Dose 区域应保持空白。
+for(let y=13;y<=20;y++)for(let x=0;x<24;x++)
+  assert(bit(a.buf,x,y)===0,`left-top Dose residue at ${x},${y}`);
 
 console.log(JSON.stringify({compact:a.crc,changedTemp:compact(changedTemp).crc,changedDose:compact(dose).crc},null,2));
