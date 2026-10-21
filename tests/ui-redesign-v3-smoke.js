@@ -84,6 +84,10 @@ assert(trendSource.includes("/2)-3);l.text(x,42,MAIN_FACE,rate.value)"),'Rate va
 assert(trendSource.includes("/2)-3);l.text(x,base,face,total.value)"),'Total value left shift missing');
 
 q=clone();q.u.page='settings';q.u.sel=0;q.u.first=0;const settingsTop=render(q);q=clone();q.u.page='settings';q.u.sel=16;q.u.first=13;const settingsBottom=render(q);assert(settingsTop.crc!==settingsBottom.crc,'settings slider/thumb does not move');
+q=clone();q.u.page='settings';q.u.sel=11;q.u.first=11;const settingsNav=render(q);
+assert(bit(settingsNav.buf,8,14)===1&&bit(settingsNav.buf,11,17)===1&&bit(settingsNav.buf,8,20)===1,'settings selected item is not a solid triangle');
+assert(bit(settingsNav.buf,121,14)===1&&bit(settingsNav.buf,124,17)===1&&bit(settingsNav.buf,121,20)===1,'settings navigation chevron is missing');
+assert(redesignSource.includes("if(val==='>'){rightChevron"),'settings navigation still renders > through a font glyph');
 assert(GRSProductionUI.redesignDebug.tests.some(x=>x[0]==='t9999s'),'9999 Sv display test missing');
 assert(GRSProductionUI.redesignDebug.tests.some(x=>x[0]==='trend'),'trend display test missing');
 
