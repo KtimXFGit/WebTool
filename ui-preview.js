@@ -60,12 +60,11 @@ function activeRangeCenti(doseCenti){
 }
 
 function drawRangeBar(l,doseCenti){
-  // 参考最终阶梯方案：8 条水平线由上到下逐级缩短。
-  // 最大宽度控制为 18 px（约占 128 px 屏宽的 14%），弱化辅助图形占比。
+  // 更克制的 8 级阶梯量程条：最长 14 px，仅作为辅助信息。
   const x=3;
   const y0=27;
   const gap=4;
-  const widths=[18,16,14,12,10,8,6,4];
+  const widths=[14,12,10,9,8,6,5,3];
   const range=activeRangeCenti(doseCenti);
   const ratio=clamp((Math.max(0,Number(doseCenti)||0))/range,0,1);
   const activeCount=ratio>0?Math.max(1,Math.ceil(widths.length*ratio)):0;
@@ -90,20 +89,16 @@ function renderCompact(state,canvas){
   l.clear();
   const {m,s,u}=state;
   if(u.page!=='monitor'||u.mode!=='rate')return originalRender(state,canvas);
-  const lang=langOf(s);
   compactHeader(l,m,s);
 
-  // 精简版：顶部左侧整数温度；Dose 右上；左侧 18 px 最大宽度阶梯量程条；
-  // 主剂量率严格按 128 px 整屏中心 x≈64 排版，单位固定右下角。
-  const doseLabel=l.string(IDS.MAIN_DOSE,lang);
-  const doseWidth=l.width(FACE.SIX10,doseLabel);
-  l.text(Math.max(26,127-doseWidth),20,FACE.SIX10,doseLabel);
+  // 精简版：顶部只保留整数温度与状态图标；去掉 Dose 文本。
+  // 左侧采用 14 px 最大宽度阶梯量程条；主剂量率按整屏中心排版并上移。
   drawRangeBar(l,m.dose);
 
   const rate=UI.formatDoseRate(m.dose);
   const valueWidth=l.width(PREVIEW_FACE_LOGISOSO32,rate.value);
-  const valueX=Math.max(22,trunc((128-valueWidth)/2));
-  l.text(valueX,55,PREVIEW_FACE_LOGISOSO32,rate.value);
+  const valueX=Math.max(16,trunc((128-valueWidth)/2));
+  l.text(valueX,52,PREVIEW_FACE_LOGISOSO32,rate.value);
   const unitWidth=l.width(FACE.T0_11,rate.unit);
   l.text(Math.max(22,126-unitWidth),62,FACE.T0_11,rate.unit);
 
@@ -172,7 +167,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简 Dose 主界面采用整数温度、右上 Dose、18/16/14/12/10/8/6/4 px 的 8 级阶梯量程条、按整屏 x≈64 视觉居中的大号 U8g2 剂量率和右下角单位；Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简主界面采用整数温度、顶部状态图标、14/12/10/9/8/6/5/3 px 的 8 级阶梯量程条、上移并按整屏 x≈64 居中的大号 U8g2 剂量率和右下角单位；Dose 文本已移除。Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
