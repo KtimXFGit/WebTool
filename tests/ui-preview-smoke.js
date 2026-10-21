@@ -35,7 +35,7 @@ assert(a.buf.length===1024,'compact framebuffer must be 1024 bytes');
 assert(/^[0-9a-f]{8}$/.test(a.crc),'compact CRC missing');
 
 // 1) 原 Production 分割线仍应全部移除。
-for(const [x,y] of [[0,10],[51,10],[73,9],[91,11],[127,30],[127,46],[32,46]])
+for(const [x,y] of [[0,10],[51,10],[73,9],[91,11],[127,30],[127,46],[26,46]])
   assert(bit(a.buf,x,y)===0,`divider pixel still present at ${x},${y}`);
 
 // 2) Home 图标所在中间标题栏区域保持空白。
@@ -64,14 +64,14 @@ assert(compact(other).crc===a.crc,'CPS/CPM/RH still affect compact UI');
 const dose=clone();dose.m.dose=1234;
 assert(compact(dose).crc!==a.crc,'dose value does not affect compact UI');
 
-// 7) 阶梯式量程条：8 级横线由上到下逐渐缩短。
-// 顶层 28 px: x=3..30；底层 7 px: x=3..9。
+// 7) 窄版阶梯式量程条：8 级横线由上到下逐渐缩短。
+// 顶层 22 px: x=3..24；底层 6 px: x=3..8。
 assert(bit(a.buf,3,27)===1,'range gauge first level start missing');
-assert(bit(a.buf,30,27)===1,'range gauge first level end missing');
-assert(bit(a.buf,31,27)===0,'range gauge first level too wide');
+assert(bit(a.buf,24,27)===1,'range gauge first level end missing');
+assert(bit(a.buf,25,27)===0,'range gauge first level too wide');
 assert(bit(a.buf,3,55)===1,'range gauge last level start missing');
-assert(bit(a.buf,9,55)===1,'range gauge last level end missing');
-assert(bit(a.buf,10,55)===0,'range gauge last level too wide');
+assert(bit(a.buf,8,55)===1,'range gauge last level end missing');
+assert(bit(a.buf,9,55)===0,'range gauge last level too wide');
 
 // 0.08 uSv/h 在 1 uSv/h 自动量程中只激活最底一级：底层 2 px，上一层仍 1 px。
 assert(bit(a.buf,3,56)===1,'active bottom range level not highlighted');
