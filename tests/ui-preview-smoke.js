@@ -78,13 +78,13 @@ for(const x of [8,27,45,64,82,101,119])
   assert(bit(a.buf,x,58)===1,`decade tick missing at x=${x}`);
 
 // 0.08 uSv/h 低于量程下限，指针应在横线下方、尖端朝上并钳位到最左端。
-assert(bit(a.buf,8,61)===1,'left-clamped upward log pointer apex missing');
-assert(bit(a.buf,6,63)===1&&bit(a.buf,10,63)===1,'left-clamped upward log pointer base missing');
+assert(bit(a.buf,8,61)===1,'left-clamped upward pointer apex missing');
+assert(bit(a.buf,6,63)===1&&bit(a.buf,10,63)===1,'left-clamped upward pointer base missing');
 
-// 2.06 uSv/h 应位于 1u 与 10u 两个 decade 之间，约 x=32；指针尖端在 y=61，向上指向量程线。
+// 2.06 uSv/h 应位于 1u 与 10u 两个 decade 之间，约 x=32；指针尖端在 y=61。
 let pointerFound=false;
 for(let x=30;x<=35;x++)pointerFound=pointerFound||bit(doseFrame.buf,x,61)===1;
-assert(pointerFound,'2.06 uSv/h log pointer is not in expected decade position');
+assert(pointerFound,'2.06 uSv/h upward log pointer is not in expected decade position');
 
 // 9) 量程标签采用 3×5 微型点阵，位于横线上方 y=52..56；主单位与标签间保留空行。
 let tinyLabelPixels=0;
@@ -103,5 +103,21 @@ for(let y=12;y<=19;y++)for(let x=108;x<128;x++)
 let mainPixels=0;
 for(let y=10;y<=42;y++)for(let x=18;x<110;x++)mainPixels+=bit(a.buf,x,y);
 assert(mainPixels>30,'main value missing after log-range layout change');
+
+// 12) 精简顶部状态：温度使用 3×5 小字，电池紧邻温度；灯光/振动图标已移除。
+let tempPixels=0;
+for(let y=1;y<=6;y++)for(let x=0;x<18;x++)tempPixels+=bit(a.buf,x,y);
+assert(tempPixels>8,'compact tiny temperature missing');
+for(let y=8;y<=9;y++)for(let x=0;x<18;x++)
+  assert(bit(a.buf,x,y)===0,`old large temperature residue at ${x},${y}`);
+// 电池框固定在温度右侧：正常 25°C 场景从 x=18 开始。
+for(const [x,y] of [[18,2],[29,2],[18,7],[29,7],[30,4]])
+  assert(bit(a.buf,x,y)===1,`left battery pixel missing at ${x},${y}`);
+// 灯光、振动原位置必须为空；声音状态移到最右侧单独显示。
+for(let y=0;y<10;y++)for(let x=88;x<112;x++)
+  assert(bit(a.buf,x,y)===0,`removed light/vibration icon residue at ${x},${y}`);
+let soundPixels=0;
+for(let y=0;y<10;y++)for(let x=114;x<128;x++)soundPixels+=bit(a.buf,x,y);
+assert(soundPixels>4,'right-side sound icon missing');
 
 console.log(JSON.stringify({compact:a.crc,changedTemp:compact(changedTemp).crc,dose206:doseFrame.crc},null,2));
