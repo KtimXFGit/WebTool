@@ -35,7 +35,7 @@ assert(a.buf.length===1024,'compact framebuffer must be 1024 bytes');
 assert(/^[0-9a-f]{8}$/.test(a.crc),'compact CRC missing');
 
 // 1) 原 Production 分割线仍应全部移除。
-for(const [x,y] of [[0,10],[51,10],[73,9],[91,11],[127,30],[127,46],[18,46]])
+for(const [x,y] of [[0,10],[51,10],[73,9],[91,11],[127,30],[127,46]])
   assert(bit(a.buf,x,y)===0,`divider pixel still present at ${x},${y}`);
 
 // 2) Home 图标所在中间标题栏区域保持空白。
@@ -60,31 +60,41 @@ assert(compact(alarm).crc===a.crc,'alarm status/face still affects compact UI');
 assert(compact(usb).crc===a.crc,'USB status still affects compact UI');
 assert(compact(other).crc===a.crc,'CPS/CPM/RH still affect compact UI');
 
-// 6) 剂量率本身必须改变大号数字和量程进度。
-const dose=clone();dose.m.dose=1234;
-assert(compact(dose).crc!==a.crc,'dose value does not affect compact UI');
+// 6) 剂量率本身必须改变大号数字及对数量级指针位置。
+const dose=clone();dose.m.dose=206; // 2.06 uSv/h
+const doseFrame=compact(dose);
+assert(doseFrame.crc!==a.crc,'dose value does not affect compact UI');
 
-// 7) 阶梯量程条整体上移 3 px：14/12/10/9/8/6/5/3 px。
-// 顶层 y=24，14 px: x=3..16；底层 y=52，3 px: x=3..5。
-assert(bit(a.buf,3,24)===1,'range gauge first level start missing');
-assert(bit(a.buf,16,24)===1,'range gauge first level end missing');
-assert(bit(a.buf,17,24)===0,'range gauge first level too wide');
-assert(bit(a.buf,3,52)===1,'range gauge last level start missing');
-assert(bit(a.buf,5,52)===1,'range gauge last level end missing');
-assert(bit(a.buf,6,52)===0,'range gauge last level too wide');
+// 7) 旧左侧阶梯条已删除。
+for(const [x,y] of [[3,24],[16,24],[3,28],[3,40],[3,52]])
+  assert(bit(a.buf,x,y)===0,`old stair gauge residue at ${x},${y}`);
 
-// 0.08 uSv/h 在 1 uSv/h 自动量程中只激活最底一级：底层 2 px，上一层仍 1 px。
-assert(bit(a.buf,3,53)===1,'active bottom range level not highlighted');
-assert(bit(a.buf,3,49)===0,'inactive range level unexpectedly highlighted');
+// 8) 底部对数量级横条位于 y=55，范围 x=8..119。
+assert(bit(a.buf,8,55)===1,'log range bar left endpoint missing');
+assert(bit(a.buf,119,55)===1,'log range bar right endpoint missing');
+assert(bit(a.buf,7,55)===0,'log range bar extends too far left');
+assert(bit(a.buf,120,55)===0,'log range bar extends too far right');
 
-// 8) Dose 已完全移除：原右上 Dose 文本区域必须保持空白。
+// decade 刻度：0.1u / 1u / 10u / 100u / 1m / 10m / 100m。
+for(const x of [8,27,45,64,82,101,119])
+  assert(bit(a.buf,x,54)===1,`decade tick missing at x=${x}`);
+
+// 0.08 uSv/h 低于量程下限 0.1 uSv/h，指针应钳位在最左端。
+assert(bit(a.buf,8,51)===1,'left-clamped log pointer apex missing');
+assert(bit(a.buf,6,53)===1&&bit(a.buf,10,53)===1,'left-clamped log pointer base missing');
+
+// 2.06 uSv/h 应位于 1u 与 10u 两个 decade 之间，约 x=32。
+let pointerFound=false;
+for(let x=30;x<=35;x++)pointerFound=pointerFound||bit(doseFrame.buf,x,51)===1;
+assert(pointerFound,'2.06 uSv/h log pointer is not in expected decade position');
+
+// 9) Dose 已完全移除：原右上 Dose 文本区域必须保持空白。
 for(let y=12;y<=19;y++)for(let x=88;x<128;x++)
   assert(bit(a.buf,x,y)===0,`Dose residue at ${x},${y}`);
 
-// 9) 主读数保持上移后的布局：其 32 px 字形顶部应从约 y=20 开始，而 y=19 仍为空。
-for(let x=24;x<104;x++)assert(bit(a.buf,x,19)===0,`main value unexpectedly reaches y=19 at x=${x}`);
-let valuePixelsAt20=0;
-for(let x=16;x<112;x++)valuePixelsAt20+=bit(a.buf,x,20);
-assert(valuePixelsAt20>0,'main value did not remain at y=20');
+// 10) 主读数为底部量级条让位后上移，中心区域应在 y=10..42 内有像素。
+let mainPixels=0;
+for(let y=10;y<=42;y++)for(let x=18;x<110;x++)mainPixels+=bit(a.buf,x,y);
+assert(mainPixels>30,'main value missing after log-range layout change');
 
-console.log(JSON.stringify({compact:a.crc,changedTemp:compact(changedTemp).crc,changedDose:compact(dose).crc},null,2));
+console.log(JSON.stringify({compact:a.crc,changedTemp:compact(changedTemp).crc,dose206:doseFrame.crc},null,2));
