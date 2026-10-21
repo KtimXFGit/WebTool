@@ -61,11 +61,11 @@ function activeRangeCenti(doseCenti){
 
 function drawRangeBar(l,doseCenti){
   // 参考阶梯式量程图：8 条水平线由上到下逐级缩短。
-  // 128×64 下最长 28 px、级间距 4 px，可形成明确层次且不侵占主读数区。
+  // 收窄到最大 22 px，给 128×64 主读数保留更多横向视觉空间。
   const x=3;
   const y0=27;
   const gap=4;
-  const widths=[28,25,22,19,16,13,10,7];
+  const widths=[22,20,18,16,14,12,9,6];
   const range=activeRangeCenti(doseCenti);
   const ratio=clamp((Math.max(0,Number(doseCenti)||0))/range,0,1);
   const activeCount=ratio>0?Math.max(1,Math.ceil(widths.length*ratio)):0;
@@ -94,21 +94,21 @@ function renderCompact(state,canvas){
   compactHeader(l,m,s);
 
   // 精简版：顶部左侧整数温度；Dose 右上；左侧阶梯式自动量程条；
-  // 大号剂量率在右侧剩余空间重新居中，单位固定右下角。
+  // 主剂量率从右侧偏置区域向整屏视觉中心回移，单位固定右下角。
   const doseLabel=l.string(IDS.MAIN_DOSE,lang);
   const doseWidth=l.width(FACE.SIX10,doseLabel);
-  l.text(Math.max(36,127-doseWidth),20,FACE.SIX10,doseLabel);
+  l.text(Math.max(30,127-doseWidth),20,FACE.SIX10,doseLabel);
   drawRangeBar(l,m.dose);
 
   const rate=UI.formatDoseRate(m.dose);
   const valueWidth=l.width(PREVIEW_FACE_LOGISOSO32,rate.value);
-  const valueLeft=34;
-  const valueRight=127;
+  const valueLeft=22;
+  const valueRight=126;
   const valueArea=valueRight-valueLeft+1;
   const valueX=valueLeft+Math.max(0,trunc((valueArea-valueWidth)/2));
   l.text(valueX,55,PREVIEW_FACE_LOGISOSO32,rate.value);
   const unitWidth=l.width(FACE.T0_11,rate.unit);
-  l.text(Math.max(34,127-unitWidth),63,FACE.T0_11,rate.unit);
+  l.text(Math.max(24,127-unitWidth),63,FACE.T0_11,rate.unit);
 
   if(Date.now()<(u.hint||0))drawHold(l,s);
   l.present();
@@ -175,7 +175,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简 Dose 主界面采用整数温度、右上 Dose、左侧 8 级阶梯式自动量程条、大号 U8g2 剂量率和右下角单位；Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简 Dose 主界面采用整数温度、右上 Dose、左侧窄版 8 级阶梯式自动量程条、视觉居中的大号 U8g2 剂量率和右下角单位；Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
