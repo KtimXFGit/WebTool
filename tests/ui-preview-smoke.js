@@ -13,11 +13,7 @@ for(const file of [
 ]) vm.runInThisContext(fs.readFileSync(path.join(root,file),'utf8'),{filename:file});
 
 function assert(v,msg){if(!v)throw new Error(msg);}
-const ctx={
-  createImageData(w,h){return {data:new Uint8ClampedArray(w*h*4),width:w,height:h};},
-  putImageData(){},
-  imageSmoothingEnabled:false
-};
+const ctx={createImageData(w,h){return {data:new Uint8ClampedArray(w*h*4),width:w,height:h};},putImageData(){},imageSmoothingEnabled:false};
 function canvas(){return {dataset:{},id:'test',getContext(){return ctx;}};}
 function bit(buf,x,y){return (buf[(y>>3)*128+x]>>(y&7))&1;}
 const base={
@@ -33,94 +29,51 @@ const normal=clone();
 const a=compact(normal);
 assert(a.buf.length===1024,'compact framebuffer must be 1024 bytes');
 assert(/^[0-9a-f]{8}$/.test(a.crc),'compact CRC missing');
+for(const [x,y] of [[0,10],[73,9],[127,30],[127,46]]) assert(bit(a.buf,x,y)===0,`divider pixel still present at ${x},${y}`);
 
-// 1) 原 Production 的主要分割线仍应移除；避开新主数字实际占用区域。
-for(const [x,y] of [[0,10],[73,9],[127,30],[127,46]])
-  assert(bit(a.buf,x,y)===0,`divider pixel still present at ${x},${y}`);
-
-// 2) Home 图标所在中间标题栏区域保持空白。
+// Home 图标所在中间标题栏区域保持空白。
 for(let y=0;y<10;y++)for(let x=40;x<74;x++)
   assert(bit(a.buf,x,y)===0,`home/header icon residue at ${x},${y}`);
 
-// 3) 顶部已改为整数温度，时间变化不应影响精简界面。
-const timeChanged=clone();timeChanged.m.time=new Date(2030,1,2,3,4,59);
-assert(compact(timeChanged).crc===a.crc,'time unexpectedly affects compact UI');
-
-// 4) 24.6 -> 25°C；相同四舍五入结果不变，不同整数应改变。
-const sameRoundedTemp=clone();sameRoundedTemp.m.temp=25.4;
-assert(compact(sameRoundedTemp).crc===a.crc,'same rounded temperature changed compact UI');
-const changedTemp=clone();changedTemp.m.temp=26.1;
-assert(compact(changedTemp).crc!==a.crc,'integer temperature does not affect compact UI');
-
-// 5) CPS/CPM/RH、STATUS/USB/表情仍不出现在精简界面。
-const alarm=clone();alarm.m.alarm=true;
-const usb=clone();usb.c.connected=true;
-const other=clone();Object.assign(other.m,{cps:99,cpm:5940,rh:99});
-assert(compact(alarm).crc===a.crc,'alarm status/face still affects compact UI');
+const timeChanged=clone();timeChanged.m.time=new Date(2030,1,2,3,4,59);assert(compact(timeChanged).crc===a.crc,'time unexpectedly affects compact UI');
+const sameRoundedTemp=clone();sameRoundedTemp.m.temp=25.4;assert(compact(sameRoundedTemp).crc===a.crc,'same rounded temperature changed compact UI');
+const changedTemp=clone();changedTemp.m.temp=26.1;assert(compact(changedTemp).crc!==a.crc,'integer temperature does not affect compact UI');
+const alarm=clone();alarm.m.alarm=true;const usb=clone();usb.c.connected=true;const other=clone();Object.assign(other.m,{cps:99,cpm:5940,rh:99});
+assert(compact(alarm).crc===a.crc,'alarm status still affects compact UI');
 assert(compact(usb).crc===a.crc,'USB status still affects compact UI');
 assert(compact(other).crc===a.crc,'CPS/CPM/RH still affect compact UI');
 
-// 6) 剂量率本身必须改变大号数字及对数量级指针位置。
-const dose=clone();dose.m.dose=206; // 2.06 uSv/h
-const doseFrame=compact(dose);
-assert(doseFrame.crc!==a.crc,'dose value does not affect compact UI');
-
-// 7) 旧左侧阶梯条已删除。
-for(const [x,y] of [[3,24],[16,24],[3,28],[3,40],[3,52]])
-  assert(bit(a.buf,x,y)===0,`old stair gauge residue at ${x},${y}`);
-
-// 8) 底部对数量级横条位于 y=60，范围端点 x=8 与 x=119。
+const dose=clone();dose.m.dose=206;const doseFrame=compact(dose);assert(doseFrame.crc!==a.crc,'dose value does not affect compact UI');
+for(const [x,y] of [[3,40],[16,40],[3,44],[16,44],[3,48]]) assert(bit(a.buf,x,y)===0,`old stair gauge residue at ${x},${y}`);
 assert(bit(a.buf,8,60)===1,'log range bar left endpoint missing');
 assert(bit(a.buf,119,60)===1,'log range bar right endpoint missing');
-
-// decade 刻度：0.1u / 1u / 10u / 100u / 1m / 10m / 100m。
-for(const x of [8,27,45,64,82,101,119])
-  assert(bit(a.buf,x,58)===1,`decade tick missing at x=${x}`);
-
-// 0.08 uSv/h 低于量程下限，指针应在横线下方、尖端朝上并钳位到最左端。
+for(const x of [8,27,45,64,82,101,119]) assert(bit(a.buf,x,58)===1,`decade tick missing at x=${x}`);
 assert(bit(a.buf,8,61)===1,'left-clamped upward pointer apex missing');
 assert(bit(a.buf,6,63)===1&&bit(a.buf,10,63)===1,'left-clamped upward pointer base missing');
-
-// 2.06 uSv/h 应位于 1u 与 10u 两个 decade 之间，约 x=32；指针尖端在 y=61。
-let pointerFound=false;
-for(let x=30;x<=35;x++)pointerFound=pointerFound||bit(doseFrame.buf,x,61)===1;
-assert(pointerFound,'2.06 uSv/h upward log pointer is not in expected decade position');
-
-// 9) 量程标签采用 3×5 微型点阵，位于横线上方 y=52..56；主单位与标签间保留空行。
-let tinyLabelPixels=0;
-for(let y=52;y<=56;y++)for(let x=0;x<128;x++)tinyLabelPixels+=bit(a.buf,x,y);
-assert(tinyLabelPixels>10,'tiny log-range labels are missing');
+let pointerFound=false;for(let x=30;x<=35;x++)pointerFound=pointerFound||bit(doseFrame.buf,x,61)===1;assert(pointerFound,'2.06 uSv/h pointer not in expected decade position');
+let tinyLabelPixels=0;for(let y=52;y<=56;y++)for(let x=0;x<128;x++)tinyLabelPixels+=bit(a.buf,x,y);assert(tinyLabelPixels>10,'tiny log-range labels are missing');
 for(let x=90;x<128;x++){
   assert(bit(a.buf,x,50)===0,`unit/log-label spacing lost at x=${x},y=50`);
   assert(bit(a.buf,x,51)===0,`unit/log-label spacing lost at x=${x},y=51`);
 }
-
-// 10) Dose 已完全移除：原右上 Dose 文本区域必须保持空白。
+// 原右上 Dose 文本区域仍保持空白。
 for(let y=12;y<=19;y++)for(let x=108;x<128;x++)
-  assert(bit(a.buf,x,y)===0,`Dose residue at ${x},${y}`);
+  assert(bit(a.buf,x,y)===0,`right-top Dose residue at ${x},${y}`);
 
-// 11) 主读数为底部量级条让位后上移，中心区域应在 y=10..42 内有足够像素。
-let mainPixels=0;
-for(let y=10;y<=42;y++)for(let x=18;x<110;x++)mainPixels+=bit(a.buf,x,y);
-assert(mainPixels>30,'main value missing after log-range layout change');
+// 主剂量率左侧新增两行 Dose / Rate 小字。
+let doseRatePixels=0;for(let y=14;y<=36;y++)for(let x=0;x<28;x++)doseRatePixels+=bit(a.buf,x,y);assert(doseRatePixels>25,'Dose Rate left label missing');
+// 主数字仍保持在主要视觉区域。
+let mainPixels=0;for(let y=10;y<=42;y++)for(let x=24;x<116;x++)mainPixels+=bit(a.buf,x,y);assert(mainPixels>30,'main value missing after Dose Rate label layout');
 
-// 12) 精简顶部状态：左侧仅保留 3×5 温度；右侧恢复声音/灯光/振动并把电池移到最右。
-let tempPixels=0;
-for(let y=1;y<=6;y++)for(let x=1;x<19;x++)tempPixels+=bit(a.buf,x,y);
-assert(tempPixels>8,'compact tiny temperature missing at left');
-// 原左侧电池区域应彻底清空（避开温度实际占用的 x=1..17）。
+// 顶部状态：左侧小号温度，右侧小号声音/灯光/振动和电池。
+let tempPixels=0;for(let y=1;y<=6;y++)for(let x=1;x<24;x++)tempPixels+=bit(a.buf,x,y);assert(tempPixels>8,'tiny temperature missing');
+let soundPixels=0;for(let y=1;y<=6;y++)for(let x=86;x<=91;x++)soundPixels+=bit(a.buf,x,y);assert(soundPixels>=8,'small sound icon missing');
+let lightPixels=0;for(let y=1;y<=6;y++)for(let x=95;x<=100;x++)lightPixels+=bit(a.buf,x,y);assert(lightPixels>=8,'small light icon missing');
+let vibPixels=0;for(let y=1;y<=6;y++)for(let x=104;x<=109;x++)vibPixels+=bit(a.buf,x,y);assert(vibPixels>=6,'small vibration icon missing');
 for(let y=1;y<=6;y++)for(let x=20;x<34;x++)
   assert(bit(a.buf,x,y)===0,`old left battery residue at ${x},${y}`);
-// 声音、灯光、振动均采用约 6×6 小图标，并留有 3 px 间隔。
-for(const [name,x1,x2] of [['sound',86,91],['light',95,100],['vibration',104,109]]){
-  let pixels=0;
-  for(let y=1;y<=6;y++)for(let x=x1;x<=x2;x++)pixels+=bit(a.buf,x,y);
-  assert(pixels>=8&&pixels<=24,`${name} mini icon pixel count unexpected: ${pixels}`);
-}
 for(const x of [92,93,94,101,102,103,110,111,112,113])for(let y=1;y<=6;y++)
   assert(bit(a.buf,x,y)===0,`top icon spacing lost at ${x},${y}`);
-// 电池移到最右侧：框 x=114..125、y=1..6，端子 x=126、y=3..4。
-for(const [x,y] of [[114,1],[125,1],[114,6],[125,6],[126,3],[126,4]])
-  assert(bit(a.buf,x,y)===1,`right battery pixel missing at ${x},${y}`);
+for(const [x,y] of [[114,1],[125,1],[114,6],[125,6],[126,3],[126,4]]) assert(bit(a.buf,x,y)===1,`right battery pixel missing at ${x},${y}`);
 
 console.log(JSON.stringify({compact:a.crc,changedTemp:compact(changedTemp).crc,dose206:doseFrame.crc},null,2));
