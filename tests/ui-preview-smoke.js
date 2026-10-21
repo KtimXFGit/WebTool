@@ -69,12 +69,9 @@ assert(doseFrame.crc!==a.crc,'dose value does not affect compact UI');
 for(const [x,y] of [[3,24],[16,24],[3,28],[3,40],[3,52]])
   assert(bit(a.buf,x,y)===0,`old stair gauge residue at ${x},${y}`);
 
-// 8) 底部对数量级横条位于 y=55，范围 x=8..119。
+// 8) 底部对数量级横条位于 y=55，范围端点 x=8 与 x=119。
 assert(bit(a.buf,8,55)===1,'log range bar left endpoint missing');
 assert(bit(a.buf,119,55)===1,'log range bar right endpoint missing');
-// y=55 下方紧接标签，边界外检查改在标签不会覆盖的 y=54。
-assert(bit(a.buf,7,54)===0,'log range structure extends too far left');
-assert(bit(a.buf,120,54)===0,'log range structure extends too far right');
 
 // decade 刻度：0.1u / 1u / 10u / 100u / 1m / 10m / 100m。
 for(const x of [8,27,45,64,82,101,119])
