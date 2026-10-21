@@ -49,10 +49,10 @@ function tinyText(l,x,y,text){
   }
 }
 
-function drawCompactTemperature(l,m){
+function drawCompactTemperature(l,m,x=18){
   const valid=m.env&&Number.isFinite(Number(m.temp));
   const text=valid?String(clamp(Math.round(Number(m.temp)),-99,199)):'--';
-  const x=1,y=2;
+  const y=2;
   tinyText(l,x,y,text);
   const degreeX=x+tinyWidth(text)+1;
   // 2×2 度数符号 + 3×5 大写 C，整体高度仅 5 px。
@@ -62,13 +62,13 @@ function drawCompactTemperature(l,m){
   return degreeX+6;
 }
 function compactHeader(l,m,s){
-  const tempRight=drawCompactTemperature(l,m);
-  // 电池移到温度旁边，形成左上角紧凑状态组。
-  const batteryX=Math.max(18,tempRight+3);
-  l.frame(batteryX,2,12,6);
-  l.pixel(batteryX+12,4);l.pixel(batteryX+12,5);
+  // 左上状态组改为“电池 → 温度”。电池整体较上一版上移 1 px。
+  const batteryX=1,batteryY=1;
+  l.frame(batteryX,batteryY,12,6);
+  l.pixel(batteryX+12,batteryY+2);l.pixel(batteryX+12,batteryY+3);
   const level=clamp(m.battLevel??0,0,3);
-  for(let bar=0;bar<level;bar++)l.box(batteryX+2+bar*3,4,2,2);
+  for(let bar=0;bar<level;bar++)l.box(batteryX+2+bar*3,batteryY+2,2,2);
+  drawCompactTemperature(l,m,18);
 
   // 顶部仅保留声音状态；灯光、振动图标从精简主界面移除。
   if(s.alarmSound){
@@ -212,7 +212,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简主界面采用 3×5 小号整数温度，电池图标移至温度旁边；顶部仅保留声音状态，灯光和振动图标已移除。主区继续使用居中大号 U8g2 剂量率，下方为 0.1 uSv/h～100 mSv/h 对数量级条，标签在线上方、三角指针在线下方。Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简主界面左上采用“电池 → 3×5 小号整数温度”排列，电池整体上移 1 px；顶部仅保留声音状态，灯光和振动图标已移除。主区继续使用居中大号 U8g2 剂量率，下方为 0.1 uSv/h～100 mSv/h 对数量级条，标签在线上方、三角指针在线下方。Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
