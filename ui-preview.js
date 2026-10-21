@@ -21,39 +21,7 @@ function langOf(s){return s.lang==='en'?'en':'zh';}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function trunc(v){return v<0?Math.ceil(v):Math.floor(v);}
 
-function drawCompactTemperature(l,m){
-  const valid=m.env&&Number.isFinite(Number(m.temp));
-  const text=valid?String(clamp(Math.round(Number(m.temp)),-99,199)):'--';
-  l.text(1,9,FACE.HAX,text);
-  const degreeX=1+l.width(FACE.HAX,text)+1;
-  l.pixel(degreeX+1,1);
-  l.pixel(degreeX,2);
-  l.pixel(degreeX+2,2);
-  l.pixel(degreeX+1,3);
-  l.text(degreeX+4,9,FACE.HAX,'C');
-}
-
-function compactHeader(l,m,s){
-  drawCompactTemperature(l,m);
-  if(s.alarmSound){
-    l.glyph(76,1,FACE.ICON,ICON.SOUND);
-    if(m.muted){
-      l.box(82,1,4,8,0);
-      l.line(82,2,85,6);
-      l.line(85,2,82,6);
-    }
-  }
-  if(s.alarmLight)l.glyph(90,1,FACE.ICON,ICON.LIGHT);
-  if(s.alarmVib)l.glyph(103,1,FACE.ICON,ICON.VIBRATION);
-  l.frame(113,2,12,6);
-  l.pixel(125,4);l.pixel(125,5);
-  const level=clamp(m.battLevel??0,0,3);
-  for(let bar=0;bar<level;bar++)l.box(115+bar*3,4,2,2);
-}
-
-// 当前 Production 资源中最小正式文本 face 是 HAXRCORP 5x7。
-// 对数量程标签仅需要数字、'.'、u/m，因此单独使用 3x5 1-bit 微型字模，
-// 在 128x64 上可为主单位、刻度和指针留出清晰间距。
+// 3×5 单色微型字模：量程标签与顶部温度共用。
 const TINY3X5={
   '0':['111','101','101','101','111'],
   '1':['010','110','010','010','111'],
@@ -65,8 +33,10 @@ const TINY3X5={
   '7':['111','001','010','010','010'],
   '8':['111','101','111','101','111'],
   '9':['111','101','111','001','111'],
+  'C':['111','100','100','100','111'],
   'u':['101','101','101','101','111'],
   'm':['101','111','111','101','101'],
+  '-':['000','000','111','000','000'],
   '.':['000','000','000','000','010']
 };
 function tinyWidth(text){return Math.max(0,String(text).length*4-1);}
@@ -78,6 +48,41 @@ function tinyText(l,x,y,text){
     px+=4;
   }
 }
+
+function drawCompactTemperature(l,m){
+  const valid=m.env&&Number.isFinite(Number(m.temp));
+  const text=valid?String(clamp(Math.round(Number(m.temp)),-99,199)):'--';
+  const x=1,y=2;
+  tinyText(l,x,y,text);
+  const degreeX=x+tinyWidth(text)+1;
+  // 2×2 度数符号 + 3×5 大写 C，整体高度仅 5 px。
+  l.pixel(degreeX,1);l.pixel(degreeX+1,1);
+  l.pixel(degreeX,2);l.pixel(degreeX+1,2);
+  tinyText(l,degreeX+3,y,'C');
+  return degreeX+6;
+}
+function compactHeader(l,m,s){
+  const tempRight=drawCompactTemperature(l,m);
+  // 电池移到温度旁边，形成左上角紧凑状态组。
+  const batteryX=Math.max(18,tempRight+3);
+  l.frame(batteryX,2,12,6);
+  l.pixel(batteryX+12,4);l.pixel(batteryX+12,5);
+  const level=clamp(m.battLevel??0,0,3);
+  for(let bar=0;bar<level;bar++)l.box(batteryX+2+bar*3,4,2,2);
+
+  // 顶部仅保留声音状态；灯光、振动图标从精简主界面移除。
+  if(s.alarmSound){
+    const soundX=116;
+    l.glyph(soundX,1,FACE.ICON,ICON.SOUND);
+    if(m.muted){
+      l.box(122,1,4,8,0);
+      l.line(122,2,125,6);
+      l.line(125,2,122,6);
+    }
+  }
+}
+// 当前 Production 资源中最小正式文本 face 是 HAXRCORP 5×7。
+// 精简页为顶部温度和量程标签复用 3×5 1-bit 微型字模，以降低状态栏视觉重量。
 
 function drawLogRangeBar(l,doseCenti){
   // 范围：0.1 uSv/h ～ 100 mSv/h，共 6 个 decade。
@@ -207,7 +212,7 @@ function installPreviewUI(){
 
   const note=document.createElement('p');
   note.className='ui-preview-note';
-  note.textContent='当前精简主界面采用整数温度、顶部状态图标、居中大号 U8g2 剂量率，以及主读数下方的 0.1 uSv/h～100 mSv/h 对数量级条；量程标签使用 3×5 单色微型点阵置于横线上方，当前位置三角指针置于横线下方。左侧阶梯量程条和 Dose 文本已移除。Total、趋势页、设置页仍保持 Production 原版。';
+  note.textContent='当前精简主界面采用 3×5 小号整数温度，电池图标移至温度旁边；顶部仅保留声音状态，灯光和振动图标已移除。主区继续使用居中大号 U8g2 剂量率，下方为 0.1 uSv/h～100 mSv/h 对数量级条，标签在线上方、三角指针在线下方。Total、趋势页、设置页仍保持 Production 原版。';
   compareWrap.insertAdjacentElement('afterend',note);
 
   previewSelect.addEventListener('change',()=>{
