@@ -97,7 +97,7 @@ function renderRate(l,state){
 }
 function totalFace(total){return total.unit==='Sv'&&Number(total.value)>=9999?SMALL_TOTAL_FACE:MAIN_FACE;}
 function renderTotal(l,state){
-  const {m,s,u}=state;drawEnvHeader(l,m,s);const total=UI.formatTotal(m.total),face=totalFace(total),base=face===MAIN_FACE?42:40;
+  const {m,s,u}=state;drawEnvHeader(l,m,s);const total=UI.formatTotal(m.total),face=totalFace(total),base=face===MAIN_FACE?47:45;
   const x=Math.max(0,trunc((128-l.width(face,total.value))/2)-3);l.text(x,base,face,total.value);const uw=l.width(FACE.LATIN,total.unit);l.text(Math.max(0,126-uw),42,FACE.LATIN,total.unit);
   const sec=Math.max(0,Math.floor(m.totalSec||0)),days=Math.min(9999,Math.floor(sec/86400)),hours=Math.floor(sec/3600)%24,mins=Math.floor(sec/60)%60;
   l.centerText(0,42,56,FACE.LATIN,`${days}D`);l.centerText(43,42,56,FACE.LATIN,`${two(hours)}H`);l.centerText(86,42,56,FACE.LATIN,`${two(mins)}M`);if(Date.now()<(u.hint||0))drawHold(l,s);
