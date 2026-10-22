@@ -77,7 +77,7 @@ function drawEnvHeader(l,m,s){
   const valid=m.env&&Number.isFinite(Number(m.temp));
   const t=valid?String(clamp(Math.round(Number(m.temp)),-99,199)):'--';
   microText(l,1,2,t);const dx=1+microWidth(t)+1;l.pixel(dx,1);l.pixel(dx+1,1);l.pixel(dx,2);l.pixel(dx+1,2);microText(l,dx+3,2,'C');
-  const rh=m.env&&Number.isFinite(Number(m.rh))?`${clamp(Math.round(Number(m.rh)),0,99)}%`:'--%';microText(l,29,2,rh);
+  const rh=m.env&&Number.isFinite(Number(m.rh))?`${clamp(Math.round(Number(m.rh)),0,99)}%`:'--%';const rhX=dx+11;microText(l,rhX,2,rh);
   drawStatusIcons(l,m,s);
 }
 
@@ -95,15 +95,15 @@ function renderRate(l,state){
   const rate=UI.formatDoseRate(m.dose);const x=Math.max(0,trunc((128-l.width(MAIN_FACE,rate.value))/2)-3);l.text(x,44,MAIN_FACE,rate.value);
   const uw=l.width(FACE.LATIN,rate.unit);l.text(Math.max(0,126-uw),44,FACE.LATIN,rate.unit);drawLogRangeBar(l,m.dose);if(Date.now()<(u.hint||0))drawHold(l,s);
 }
-function totalFace(total){return total.unit==='Sv'&&Number(total.value)>=9999?SMALL_TOTAL_FACE:MAIN_FACE;}
+function totalFace(){return MAIN_FACE;}
 function renderTotal(l,state){
-  const {m,s,u}=state;drawEnvHeader(l,m,s);const total=UI.formatTotal(m.total),face=totalFace(total),base=face===MAIN_FACE?47:45;
+  const {m,s,u}=state;drawEnvHeader(l,m,s);const total=UI.formatTotal(m.total),face=totalFace(total),base=47;
   const x=Math.max(0,trunc((128-l.width(face,total.value))/2)-3);l.text(x,base,face,total.value);const uw=l.width(FACE.LATIN,total.unit);l.text(Math.max(0,126-uw),42,FACE.LATIN,total.unit);
   const sec=Math.max(0,Math.floor(m.totalSec||0)),days=Math.min(9999,Math.floor(sec/86400)),hours=Math.floor(sec/3600)%24,mins=Math.floor(sec/60)%60;
   l.centerText(0,42,56,FACE.LATIN,`${days}D`);l.centerText(43,42,56,FACE.LATIN,`${two(hours)}H`);l.centerText(86,42,56,FACE.LATIN,`${two(mins)}M`);if(Date.now()<(u.hint||0))drawHold(l,s);
 }
 
-function shortDose(centi){const u=Math.max(0,Number(centi)||0)/100;if(u<10)return `${u.toFixed(1)}u`;if(u<1000)return `${Math.round(u)}u`;const ms=u/1000;if(ms<10)return `${ms.toFixed(1)}m`;if(ms<1000)return `${Math.round(ms)}m`;return `${(ms/1000).toFixed(1)}S`;}
+function shortDose(centi){const u=Math.max(0,Number(centi)||0)/100;if(u<1000)return `${u.toFixed(2)}u`;const ms=u/1000;if(ms<1000)return `${ms.toFixed(2)}m`;return `${(ms/1000).toFixed(2)}S`;}
 function logY(centi,top=4,bottom=52){const u=Math.max(.1,(Math.max(0,Number(centi)||0))/100),r=clamp((Math.log10(u)+1)/6,0,1);return bottom-Math.round(r*(bottom-top));}
 function renderTrend(l,state){
   const {m}=state;
@@ -142,18 +142,15 @@ function renderTrend(l,state){
   const lowMinorY=Math.round((Y_LOW+B)/2);
   l.hline(AX-2,lowMinorY,3);
 
-  // 60 秒压缩为 30 个连续柱块；各柱槽首尾相接，不再出现固定 1 px 间隙。
+  // 最近 60 秒数据按时间顺序绘制为连续折线。
   if(history.length){
-    const BUCKETS=Math.min(30,history.length),PLOT_W=R-L+1;
-    for(let b=0;b<BUCKETS;b++){
-      const i0=Math.floor(b*history.length/BUCKETS);
-      const i1=Math.max(i0+1,Math.floor((b+1)*history.length/BUCKETS));
-      let peak=0;
-      for(let i=i0;i<i1&&i<history.length;i++)peak=Math.max(peak,Number(history[i])||0);
-      const x0=L+Math.floor(b*PLOT_W/BUCKETS);
-      const x1=L+Math.floor((b+1)*PLOT_W/BUCKETS)-1;
-      const y=clamp(trendY(peak),T,B);
-      l.box(x0,y,Math.max(1,x1-x0+1),B-y+1);
+    let prevX=L,prevY=clamp(trendY(history[0]),T,B);
+    if(history.length===1)l.pixel(prevX,prevY);
+    for(let i=1;i<history.length;i++){
+      const x=L+Math.round(i*(R-L)/Math.max(1,history.length-1));
+      const y=clamp(trendY(history[i]),T,B);
+      l.line(prevX,prevY,x,y);
+      prevX=x;prevY=y;
     }
   }
 
@@ -164,7 +161,7 @@ function renderTrend(l,state){
   microText(l,x30-trunc(microWidth('30S')/2),58,'30S');
   microText(l,x60-microWidth('60S')+1,58,'60S');
 
-  // 前景层：参数最后绘制，局部清除文字区域，高柱可以进入参数区。
+  // 前景层：参数最后绘制，局部清除文字区域，折线可以进入参数区。
   const frontText=(x,y,text)=>{
     const w=microWidth(text);
     l.box(Math.max(0,x-1),Math.max(0,y-1),Math.min(128-x+1,w+2),7,0);
@@ -182,7 +179,7 @@ function settingValue(l,state,i,lang){const {s}=state;if(i===0)return s.lang==='
 function drawScrollThumb(l,sel,count){const y1=12,y2=60;l.vline(3,y1,y2-y1+1);const pos=y1+Math.round((Math.max(0,Math.min(count-1,sel))*(y2-y1-4))/Math.max(1,count-1));l.frame(1,pos,5,5);l.box(2,pos+1,3,3);}
 function renderSettingsSub(l,state){const {m,s,u,c}=state,lang=s.lang==='en'?'en':'zh';drawTimeHeader(l,m,s);const face=lang==='en'?FACE.LATIN:FACE.BODY;
   if(u.sub==='device'){l.text(9,17,face,l.string(IDS.FIRMWARE,lang));l.text(9,34,face,l.string(IDS.RESOURCE,lang));l.text(74,19,FACE.LATIN,c.info?`0x${Number(c.info.applicationVersion).toString(16).toUpperCase()}`:'SIM');l.text(74,36,FACE.LATIN,c.res?`0x${Number(c.res.activeVersion).toString(16).toUpperCase()}`:'SIM');return;}
-  if(u.sub==='datetime'){l.centerText(0,128,14,face,l.string(IDS.DATE_TIME,lang));const d=m.time instanceof Date?m.time:new Date();l.centerText(0,128,31,FACE.LATIN,`${d.getFullYear()}-${two(d.getMonth()+1)}-${two(d.getDate())}`);l.centerText(0,128,47,FACE.LATIN,`${two(d.getHours())}:${two(d.getMinutes())}`);return;}
+  if(u.sub==='datetime'){l.centerText(0,128,14,face,l.string(IDS.DATE_TIME,lang));const d=m.time instanceof Date?m.time:new Date();l.centerText(0,128,39,FACE.LATIN,`${d.getFullYear()}-${two(d.getMonth()+1)}-${two(d.getDate())}`);return;}
   const isData=u.sub==='data',ids=isData?[IDS.ALARM_LOG,IDS.CLEAR_LOG,IDS.BACK]:[IDS.CLEAR,IDS.LIMIT,IDS.BACK],sel=u.subSel||0;for(let i=0;i<3;i++){const y=16+i*15;if(i===sel)solidTriangle(l,7,y+2);l.textId(15,y,face,ids[i],lang);}return;
 }
 function renderSettings(l,state){const {m,s,u}=state;drawTimeHeader(l,m,s);if(u.sub){renderSettingsSub(l,state);return;}const lang=s.lang==='en'?'en':'zh',face=lang==='en'?FACE.LATIN:FACE.BODY,count=SETTINGS_LABELS.length;drawScrollThumb(l,u.sel||0,count);let first=Math.max(0,Math.min(count-4,u.first||0));for(let r=0;r<4;r++){const i=first+r;if(i>=count)break;const y=12+r*13;if(i===u.sel)solidTriangle(l,8,y+2);l.textId(15,y,face,SETTINGS_LABELS[i],lang);const val=settingValue(l,state,i,lang);if(val==='>'){rightChevron(l,121,y+2);}else{const vf=lang==='en'?FACE.LATIN:(i===0||boolKey(i)?FACE.BODY:FACE.LATIN),w=l.width(vf,val);l.text(Math.max(80,125-w),y+(vf===FACE.BODY?0:2),vf,val);}}}
@@ -213,6 +210,6 @@ UI.render=function(state,canvas){
   lastBaseState=state;sampleLive(state);const key=testSelect?.value||'auto',effective=applyTest(state,key),mode=currentMode();const prior=prevRender(effective,canvas);if(mode==='production'){syncCompare(effective,canvas,mode);return prior;}const out=renderRedesign(effective,canvas);syncCompare(effective,canvas,mode);const st=document.getElementById('uiStateText');if(st&&key!=='auto')st.textContent=`显示测试：${TESTS.find(x=>x[0]===key)?.[1]||key}`;return out;
 };
 
-function installTestUI(){const controls=document.querySelector('.simulator-card .inline-controls');if(!controls||document.getElementById('displayTest'))return;const group=document.createElement('span');group.className='ui-preview-control display-test-control';const label=document.createElement('label');label.htmlFor='displayTest';label.textContent='显示测试';testSelect=document.createElement('select');testSelect.id='displayTest';for(const [v,t] of TESTS){const o=document.createElement('option');o.value=v;o.textContent=t;testSelect.appendChild(o);}const prev=document.createElement('button');prev.type='button';prev.textContent='‹';prev.title='上一个测试值';const next=document.createElement('button');next.type='button';next.textContent='›';next.title='下一个测试值';const rerender=()=>{const lcd=document.getElementById('lcd');if(lcd&&lastBaseState)UI.render(lastBaseState,lcd);};testSelect.addEventListener('change',rerender);prev.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex-1+testSelect.options.length)%testSelect.options.length;rerender();});next.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex+1)%testSelect.options.length;rerender();});group.append(label,testSelect,prev,next);controls.appendChild(group);const note=document.querySelector('.ui-preview-note');if(note)note.textContent='精简 UI V3：Dose Rate 左上显示 HH:MM，主剂量率取消 Dose / Rate 标签并在整屏中心基础上左移 3 px，uSv/h 与 mSv/h 恢复使用字体自身的斜杠；Total Dose 左上显示整数温度与湿度，取消 Dose 标签并在整屏中心基础上左移 3 px。主数值统一固定字号与槽位，9999 Sv 自动切换小一档字体；趋势页使用剂量率对数 Y 轴、右向刻度与条形历史，并分栏显示 AVG / MAX / CPS / CPM；设置页采用同款状态栏、无分割线和轨道中置滑块。可使用“显示测试”逐项检查边界数值。';}
+function installTestUI(){const controls=document.querySelector('.simulator-card .inline-controls');if(!controls||document.getElementById('displayTest'))return;const group=document.createElement('span');group.className='ui-preview-control display-test-control';const label=document.createElement('label');label.htmlFor='displayTest';label.textContent='显示测试';testSelect=document.createElement('select');testSelect.id='displayTest';for(const [v,t] of TESTS){const o=document.createElement('option');o.value=v;o.textContent=t;testSelect.appendChild(o);}const prev=document.createElement('button');prev.type='button';prev.textContent='‹';prev.title='上一个测试值';const next=document.createElement('button');next.type='button';next.textContent='›';next.title='下一个测试值';const rerender=()=>{const lcd=document.getElementById('lcd');if(lcd&&lastBaseState)UI.render(lastBaseState,lcd);};testSelect.addEventListener('change',rerender);prev.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex-1+testSelect.options.length)%testSelect.options.length;rerender();});next.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex+1)%testSelect.options.length;rerender();});group.append(label,testSelect,prev,next);controls.appendChild(group);const note=document.querySelector('.ui-preview-note');if(note)note.textContent='精简 UI V3：Dose Rate 左上显示 HH:MM，主剂量率取消 Dose / Rate 标签并在整屏中心基础上左移 3 px；Total Dose 左上显示整数温度与湿度，湿度紧随温度并保留 5 px 间距，主数值始终使用统一大字体；趋势页使用剂量率对数 Y 轴与连续折线历史，并显示两位小数的 AVG / MAX；日期时间子页显示年月日。可使用“显示测试”逐项检查边界数值。';}
 if(typeof document!=='undefined')installTestUI();
 })();
