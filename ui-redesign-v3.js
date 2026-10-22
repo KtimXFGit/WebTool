@@ -92,8 +92,8 @@ function drawLogRangeBar(l,doseCenti){
 }
 function renderRate(l,state){
   const {m,s,u}=state;drawTimeHeader(l,m,s);
-  const rate=UI.formatDoseRate(m.dose);const x=Math.max(0,trunc((128-l.width(MAIN_FACE,rate.value))/2)-3);l.text(x,42,MAIN_FACE,rate.value);
-  const uw=l.width(FACE.LATIN,rate.unit);l.text(Math.max(0,126-uw),42,FACE.LATIN,rate.unit);drawLogRangeBar(l,m.dose);if(Date.now()<(u.hint||0))drawHold(l,s);
+  const rate=UI.formatDoseRate(m.dose);const x=Math.max(0,trunc((128-l.width(MAIN_FACE,rate.value))/2)-3);l.text(x,44,MAIN_FACE,rate.value);
+  const uw=l.width(FACE.LATIN,rate.unit);l.text(Math.max(0,126-uw),44,FACE.LATIN,rate.unit);drawLogRangeBar(l,m.dose);if(Date.now()<(u.hint||0))drawHold(l,s);
 }
 function totalFace(total){return total.unit==='Sv'&&Number(total.value)>=9999?SMALL_TOTAL_FACE:MAIN_FACE;}
 function renderTotal(l,state){
