@@ -84,8 +84,8 @@ function drawEnvHeader(l,m,s){
 function drawHold(l,s){const lang=s.lang==='en'?'en':'zh',face=lang==='en'?FACE.LATIN:FACE.BODY,text=l.string(IDS.HOLD,lang),w=l.width(face,text),bw=Math.min(124,w+8),x=trunc((128-bw)/2);l.box(x,23,bw,19,0);l.frame(x,23,bw,19);l.centerText(x,bw,face===FACE.BODY?26:29,face,text);}
 function mainValueX(l,face,value,left=28,right=126){const w=l.width(face,value);return left+Math.max(0,trunc((right-left+1-w)/2));}
 function drawLogRangeBar(l,doseCenti){
-  const x1=8,x2=119,y=60,minLog=-1,maxLog=5;
-  const labels=[[-1,'.1u'],[1,'10u'],[3,'1m'],[5,'100m']];
+  const x1=8,x2=119,y=60,minLog=-1,maxLog=4;
+  const labels=[[-1,'.1u'],[1,'10u'],[3,'1m'],[4,'10m']];
   for(const [d,t] of labels){const center=x1+Math.round((x2-x1)*(d-minLog)/(maxLog-minLog));const w=microWidth(t);microText(l,clamp(center-trunc(w/2),0,127-w),52,t);}
   l.hline(x1,y,x2-x1+1);for(let d=minLog;d<=maxLog;d++){const x=x1+Math.round((x2-x1)*(d-minLog)/(maxLog-minLog));l.vline(x,y-2,3);}
   const usv=Math.max(.1,(Math.max(0,Number(doseCenti)||0))/100),r=clamp((Math.log10(usv)-minLog)/(maxLog-minLog),0,1),px=x1+Math.round((x2-x1)*r);l.pixel(px,61);l.hline(px-1,62,3);l.hline(px-2,63,5);
@@ -104,29 +104,31 @@ function renderTotal(l,state){
 }
 
 function shortDose(centi){const u=Math.max(0,Number(centi)||0)/100;if(u<1000)return `${u.toFixed(2)}u`;const ms=u/1000;if(ms<1000)return `${ms.toFixed(2)}m`;return `${(ms/1000).toFixed(2)}S`;}
-function logY(centi,top=4,bottom=52){const u=Math.max(.1,(Math.max(0,Number(centi)||0))/100),r=clamp((Math.log10(u)+1)/6,0,1);return bottom-Math.round(r*(bottom-top));}
+function logY(centi,top=4,bottom=52){const u=Math.max(.1,(Math.max(0,Number(centi)||0))/100),r=clamp((Math.log10(u)+1)/5,0,1);return bottom-Math.round(r*(bottom-top));}
 function renderTrend(l,state){
   const {m}=state;
   const history=(Array.isArray(m.doseHistory)&&m.doseHistory.length?m.doseHistory:liveDoseHistory).slice(-60);
   const AX=22,L=25,R=124,T=5,Y_TOP=5,Y_LOW=47,B=53;
 
-  // Y 轴主量级严格等间距：100m / 1m / 10u / .1u 每级相隔 14 px。
-  // 0~.1u 单独保留 6 px 低端区间，不破坏主对数量级的等距关系。
+  // Y 轴范围统一为 0.1 uSv/h ～ 10 mSv/h，共 5 个 decade。
+  // 0~0.1u 单独保留底部 6 px 区间，主对数区间映射 0.1u~10m。
   const trendY=(centi)=>{
     const u=Math.max(0,Number(centi)||0)/100;
     if(u<=0.1)return B-Math.round(clamp(u/0.1,0,1)*(B-Y_LOW));
-    const r=clamp((Math.log10(u)+1)/6,0,1);
+    const r=clamp((Math.log10(u)+1)/5,0,1);
     return Y_LOW-Math.round(r*(Y_LOW-Y_TOP));
   };
 
   l.vline(AX,T,B-T+1);
   l.hline(AX,B,R-AX+1);
 
-  // 主刻度和刻度值均位于 Y 轴左侧。
+  // 主要标签覆盖新量程的上下限及中间代表量级。
   const majors=[
-    [10000000,'100m',5],
-    [100000,'1m',19],
-    [1000,'10u',33],
+    [1000000,'10m',5],
+    [100000,'1m',13],
+    [10000,'100u',22],
+    [1000,'10u',30],
+    [100,'1u',39],
     [10,'.1u',47]
   ];
   for(const [,text,y] of majors){
@@ -135,7 +137,7 @@ function renderTrend(l,state){
   }
 
   // 每个 decade 的小刻度同样朝左；0~.1u 之间保留一个额外短刻度。
-  for(let d=-1;d<=5;d++){
+  for(let d=-1;d<=4;d++){
     const centi=Math.pow(10,d)*100,y=trendY(centi);
     l.hline(AX-2,y,3);
   }
@@ -175,7 +177,7 @@ function renderTrend(l,state){
 
 const SETTINGS_LABELS=[IDS.LANGUAGE,IDS.ALARM_THRESHOLD,IDS.BACKLIGHT_SWITCH,IDS.BACKLIGHT,IDS.AUTO_SLEEP,IDS.KEY_SOUND,IDS.KEY_VIB,IDS.GM_SOUND,IDS.ALARM_SOUND,IDS.ALARM_LIGHT,IDS.ALARM_VIB,IDS.DATE_TIME,IDS.TOTAL_DOSE,IDS.DATA,IDS.DEVICE_INFO,IDS.RESTORE,IDS.RETURN_HOME];
 function boolKey(i){return ({2:'backlightOn',4:'autoSleep',5:'keySound',6:'keyVib',7:'gmSound',8:'alarmSound',9:'alarmLight',10:'alarmVib'})[i];}
-function settingValue(l,state,i,lang){const {s}=state;if(i===0)return s.lang==='en'?l.string(IDS.ENGLISH,lang):l.string(IDS.CHINESE,lang);if(i===1){const d=UI.formatDoseRate(s.threshold);return `${d.value}${d.unit.replace('Sv/h','')}`;}if(i===3)return `${s.backlight}%`;const k=boolKey(i);if(k)return l.string(s[k]?IDS.ON:IDS.OFF,lang);return '>';} 
+function settingValue(l,state,i,lang){const {s}=state;if(i===0)return s.lang==='en'?l.string(IDS.ENGLISH,lang):l.string(IDS.CHINESE,lang);if(i===1){const d=UI.formatDoseRate(s.threshold);return `${d.value}${d.unit.replace('Sv/h','')}`;}if(i===3)return `${s.backlight}%`;const k=boolKey(i);if(k)return l.string(s[k]?IDS.ON:IDS.OFF,lang);return '>';}
 function drawScrollThumb(l,sel,count){const y1=12,y2=60;l.vline(3,y1,y2-y1+1);const pos=y1+Math.round((Math.max(0,Math.min(count-1,sel))*(y2-y1-4))/Math.max(1,count-1));l.frame(1,pos,5,5);l.box(2,pos+1,3,3);}
 function renderSettingsSub(l,state){const {m,s,u,c}=state,lang=s.lang==='en'?'en':'zh';drawTimeHeader(l,m,s);const face=lang==='en'?FACE.LATIN:FACE.BODY;
   if(u.sub==='device'){l.text(9,17,face,l.string(IDS.FIRMWARE,lang));l.text(9,34,face,l.string(IDS.RESOURCE,lang));l.text(74,19,FACE.LATIN,c.info?`0x${Number(c.info.applicationVersion).toString(16).toUpperCase()}`:'SIM');l.text(74,36,FACE.LATIN,c.res?`0x${Number(c.res.activeVersion).toString(16).toUpperCase()}`:'SIM');return;}
@@ -210,6 +212,6 @@ UI.render=function(state,canvas){
   lastBaseState=state;sampleLive(state);const key=testSelect?.value||'auto',effective=applyTest(state,key),mode=currentMode();const prior=prevRender(effective,canvas);if(mode==='production'){syncCompare(effective,canvas,mode);return prior;}const out=renderRedesign(effective,canvas);syncCompare(effective,canvas,mode);const st=document.getElementById('uiStateText');if(st&&key!=='auto')st.textContent=`显示测试：${TESTS.find(x=>x[0]===key)?.[1]||key}`;return out;
 };
 
-function installTestUI(){const controls=document.querySelector('.simulator-card .inline-controls');if(!controls||document.getElementById('displayTest'))return;const group=document.createElement('span');group.className='ui-preview-control display-test-control';const label=document.createElement('label');label.htmlFor='displayTest';label.textContent='显示测试';testSelect=document.createElement('select');testSelect.id='displayTest';for(const [v,t] of TESTS){const o=document.createElement('option');o.value=v;o.textContent=t;testSelect.appendChild(o);}const prev=document.createElement('button');prev.type='button';prev.textContent='‹';prev.title='上一个测试值';const next=document.createElement('button');next.type='button';next.textContent='›';next.title='下一个测试值';const rerender=()=>{const lcd=document.getElementById('lcd');if(lcd&&lastBaseState)UI.render(lastBaseState,lcd);};testSelect.addEventListener('change',rerender);prev.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex-1+testSelect.options.length)%testSelect.options.length;rerender();});next.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex+1)%testSelect.options.length;rerender();});group.append(label,testSelect,prev,next);controls.appendChild(group);const note=document.querySelector('.ui-preview-note');if(note)note.textContent='精简 UI V3：顶部状态栏恢复旧版较大的正式字体、状态图标与电池尺寸；Dose Rate 主读数保持当前位置；Total Dose 保持温湿度 5 px 间距与统一大字体；趋势页继续使用连续折线和两位小数 AVG / MAX；日期时间子页显示年月日。';}
+function installTestUI(){const controls=document.querySelector('.simulator-card .inline-controls');if(!controls||document.getElementById('displayTest'))return;const group=document.createElement('span');group.className='ui-preview-control display-test-control';const label=document.createElement('label');label.htmlFor='displayTest';label.textContent='显示测试';testSelect=document.createElement('select');testSelect.id='displayTest';for(const [v,t] of TESTS){const o=document.createElement('option');o.value=v;o.textContent=t;testSelect.appendChild(o);}const prev=document.createElement('button');prev.type='button';prev.textContent='‹';prev.title='上一个测试值';const next=document.createElement('button');next.type='button';next.textContent='›';next.title='下一个测试值';const rerender=()=>{const lcd=document.getElementById('lcd');if(lcd&&lastBaseState)UI.render(lastBaseState,lcd);};testSelect.addEventListener('change',rerender);prev.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex-1+testSelect.options.length)%testSelect.options.length;rerender();});next.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex+1)%testSelect.options.length;rerender();});group.append(label,testSelect,prev,next);controls.appendChild(group);const note=document.querySelector('.ui-preview-note');if(note)note.textContent='精简 UI V3：顶部状态栏保持旧版较大的正式字体、状态图标与电池尺寸；Dose Rate 主界面和趋势页的对数量程统一调整为 0.1 uSv/h～10 mSv/h；Total Dose 保持温湿度 5 px 间距与统一大字体；趋势页继续使用连续折线和两位小数 AVG / MAX；日期时间子页显示年月日。';}
 if(typeof document!=='undefined')installTestUI();
 })();
