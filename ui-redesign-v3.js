@@ -3,7 +3,7 @@
 
 const UI=window.GRSProductionUI;
 if(!UI)return;
-const {FACE,IDS}=UI;
+const {FACE,ICON,IDS}=UI;
 const MAIN_FACE=8;
 const SMALL_TOTAL_FACE=FACE.TIMR24;
 const prevRender=UI.render;
@@ -64,20 +64,20 @@ function solidTriangle(l,x,y){
 }
 function rightChevron(l,x,y){l.line(x,y,x+3,y+3);l.line(x+3,y+3,x,y+6);}
 
-function drawMiniBitmap(l,x,y,rows){for(let yy=0;yy<rows.length;yy++)for(let xx=0;xx<rows[yy].length;xx++)if(rows[yy][xx]==='1')l.pixel(x+xx,y+yy);}
 function drawStatusIcons(l,m,s){
-  if(s.alarmSound){drawMiniBitmap(l,86,1,['001000','011010','111001','111001','011010','001000']);if(m.muted)l.line(87,1,91,6);}
-  if(s.alarmLight)drawMiniBitmap(l,95,1,['001000','100010','011100','011100','100010','001000']);
-  if(s.alarmVib)drawMiniBitmap(l,104,1,['100001','010010','011110','011110','010010','100001']);
-  l.frame(114,1,12,6);l.pixel(126,3);l.pixel(126,4);
-  const level=clamp(m.battLevel??0,0,3);for(let bar=0;bar<level;bar++)l.box(116+bar*3,3,2,2);
+  if(s.alarmSound){l.glyph(76,1,FACE.ICON,ICON.SOUND);if(m.muted){l.box(82,1,4,8,0);l.line(82,2,85,6);l.line(85,2,82,6);}}
+  if(s.alarmLight)l.glyph(90,1,FACE.ICON,ICON.LIGHT);
+  if(s.alarmVib)l.glyph(103,1,FACE.ICON,ICON.VIBRATION);
+  l.frame(113,2,12,6);l.pixel(125,4);l.pixel(125,5);
+  const level=clamp(m.battLevel??0,0,3);for(let bar=0;bar<level;bar++)l.box(115+bar*3,4,2,2);
 }
-function drawTimeHeader(l,m,s){const d=m.time instanceof Date?m.time:new Date();microText(l,1,2,`${two(d.getHours())}:${two(d.getMinutes())}`);drawStatusIcons(l,m,s);}
+function drawTimeHeader(l,m,s){const d=m.time instanceof Date?m.time:new Date();l.text(1,9,FACE.PROFONT12,`${two(d.getHours())}:${two(d.getMinutes())}`);drawStatusIcons(l,m,s);}
 function drawEnvHeader(l,m,s){
   const valid=m.env&&Number.isFinite(Number(m.temp));
   const t=valid?String(clamp(Math.round(Number(m.temp)),-99,199)):'--';
-  microText(l,1,2,t);const dx=1+microWidth(t)+1;l.pixel(dx,1);l.pixel(dx+1,1);l.pixel(dx,2);l.pixel(dx+1,2);microText(l,dx+3,2,'C');
-  const rh=m.env&&Number.isFinite(Number(m.rh))?`${clamp(Math.round(Number(m.rh)),0,99)}%`:'--%';const rhX=dx+11;microText(l,rhX,2,rh);
+  l.text(1,9,FACE.HAX,t);const dx=1+l.width(FACE.HAX,t)+1;l.pixel(dx+1,1);l.pixel(dx,2);l.pixel(dx+2,2);l.pixel(dx+1,3);l.text(dx+4,9,FACE.HAX,'C');
+  const cRight=dx+4+l.width(FACE.HAX,'C');
+  const rh=m.env&&Number.isFinite(Number(m.rh))?`${clamp(Math.round(Number(m.rh)),0,99)}%`:'--%';l.text(cRight+5,9,FACE.HAX,rh);
   drawStatusIcons(l,m,s);
 }
 
@@ -210,6 +210,6 @@ UI.render=function(state,canvas){
   lastBaseState=state;sampleLive(state);const key=testSelect?.value||'auto',effective=applyTest(state,key),mode=currentMode();const prior=prevRender(effective,canvas);if(mode==='production'){syncCompare(effective,canvas,mode);return prior;}const out=renderRedesign(effective,canvas);syncCompare(effective,canvas,mode);const st=document.getElementById('uiStateText');if(st&&key!=='auto')st.textContent=`显示测试：${TESTS.find(x=>x[0]===key)?.[1]||key}`;return out;
 };
 
-function installTestUI(){const controls=document.querySelector('.simulator-card .inline-controls');if(!controls||document.getElementById('displayTest'))return;const group=document.createElement('span');group.className='ui-preview-control display-test-control';const label=document.createElement('label');label.htmlFor='displayTest';label.textContent='显示测试';testSelect=document.createElement('select');testSelect.id='displayTest';for(const [v,t] of TESTS){const o=document.createElement('option');o.value=v;o.textContent=t;testSelect.appendChild(o);}const prev=document.createElement('button');prev.type='button';prev.textContent='‹';prev.title='上一个测试值';const next=document.createElement('button');next.type='button';next.textContent='›';next.title='下一个测试值';const rerender=()=>{const lcd=document.getElementById('lcd');if(lcd&&lastBaseState)UI.render(lastBaseState,lcd);};testSelect.addEventListener('change',rerender);prev.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex-1+testSelect.options.length)%testSelect.options.length;rerender();});next.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex+1)%testSelect.options.length;rerender();});group.append(label,testSelect,prev,next);controls.appendChild(group);const note=document.querySelector('.ui-preview-note');if(note)note.textContent='精简 UI V3：Dose Rate 左上显示 HH:MM，主剂量率取消 Dose / Rate 标签并在整屏中心基础上左移 3 px；Total Dose 左上显示整数温度与湿度，湿度紧随温度并保留 5 px 间距，主数值始终使用统一大字体；趋势页使用剂量率对数 Y 轴与连续折线历史，并显示两位小数的 AVG / MAX；日期时间子页显示年月日。可使用“显示测试”逐项检查边界数值。';}
+function installTestUI(){const controls=document.querySelector('.simulator-card .inline-controls');if(!controls||document.getElementById('displayTest'))return;const group=document.createElement('span');group.className='ui-preview-control display-test-control';const label=document.createElement('label');label.htmlFor='displayTest';label.textContent='显示测试';testSelect=document.createElement('select');testSelect.id='displayTest';for(const [v,t] of TESTS){const o=document.createElement('option');o.value=v;o.textContent=t;testSelect.appendChild(o);}const prev=document.createElement('button');prev.type='button';prev.textContent='‹';prev.title='上一个测试值';const next=document.createElement('button');next.type='button';next.textContent='›';next.title='下一个测试值';const rerender=()=>{const lcd=document.getElementById('lcd');if(lcd&&lastBaseState)UI.render(lastBaseState,lcd);};testSelect.addEventListener('change',rerender);prev.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex-1+testSelect.options.length)%testSelect.options.length;rerender();});next.addEventListener('click',()=>{testSelect.selectedIndex=(testSelect.selectedIndex+1)%testSelect.options.length;rerender();});group.append(label,testSelect,prev,next);controls.appendChild(group);const note=document.querySelector('.ui-preview-note');if(note)note.textContent='精简 UI V3：顶部状态栏恢复旧版较大的正式字体、状态图标与电池尺寸；Dose Rate 主读数保持当前位置；Total Dose 保持温湿度 5 px 间距与统一大字体；趋势页继续使用连续折线和两位小数 AVG / MAX；日期时间子页显示年月日。';}
 if(typeof document!=='undefined')installTestUI();
 })();
